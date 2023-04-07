@@ -1,0 +1,97 @@
+
+.header{
+    max-width: 1024px;
+    margin: 10px auto;
+    text-align: center;
+}
+
+.container{
+    display: flex;
+    margin: 0 auto;
+    width: fit-content;
+}
+.chessboard {
+    width: 650px;
+    height: 650px;
+    display: block;
+
+}
+
+.img-pieces{
+    margin: 7px;
+    max-height: 65px;
+    max-width: 65px;
+}
+
+.rowLine {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    height: 80px;
+}
+
+.square {
+    width: 80px;
+    height: 80px;
+    text-align: center;
+}
+
+.selected{
+    background-color: rgba(135, 114, 241, 0.88);
+}
+
+.left-line {
+    width: 10px;
+    height: 80px;
+    padding-top: 25px;
+}
+
+.left-block{
+    max-width: 300px;
+    display: block;
+}
+
+.right-block{
+    max-width: 300px;
+    display: block;
+    background-color: #0a58ca;
+}
+
+.down-cell{
+    width: 80px;
+    height: 10px;
+}
+
+.bd-top{
+    border-top: black 1px solid;
+}
+.bd-right{
+    border-right: black 1px solid;;
+}
+.bd-left{
+    border-left: black 1px solid;;
+}
+
+.bd-bottom{
+    border-bottom: black 1px solid;;
+}
+
+.down-row {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    height: 25px;
+    text-align: center;
+}
+
+.white {
+    background-color: white;
+}
+
+.black {
+    background-color: #9d9898;
+}
+
+.check{
+    background: red;
+}
