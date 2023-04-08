@@ -124,8 +124,9 @@ function iniStandard(){
                 kingMoved: false
         },
     }
-
+    chessHistory = [];
     setTurnToMove('white');
+    updateStatusBar();
 }
 
 function setPiece(player, piece, x, y){
@@ -213,6 +214,18 @@ function showSteps(){
 
         for (let i = 0; i<possibleMoves.length; i++){
             if(x === possibleMoves[i].x && y === possibleMoves[i].y){
+
+                let opposite;
+
+                if(chessState.turnToMove === 'white')
+                    opposite = 'black'
+                else if (chessState.turnToMove === 'black')
+                    opposite = 'white';
+
+
+
+                console.log(chessHistory);
+
                 setPiece(selectedInfo.player, selectedInfo.chessPiece, x, y);
                 setPiece('', '', selectedInfo.x, selectedInfo.y);
 
@@ -241,7 +254,7 @@ function showSteps(){
                     y: -1,
                     chessPiece: '',
                 }
-
+                let check = checkCheck(chessState.turnToMove, opposite);
                 changeTurnToMove();
 
                 let checkCell = document.querySelector('.check');
@@ -250,20 +263,19 @@ function showSteps(){
                     checkCell.style.removeProperty('background-color');
                 }
 
-                let opposite;
-
-                if(chessState.turnToMove === 'white')
-                    opposite = 'black'
-                else if (chessState.turnToMove === 'black')
-                    opposite = 'white';
-
-                let check = checkCheck(chessState.turnToMove, opposite);
                 for (let i = 0; i<check.length; i++){
                     checkCell = getCell(check[i].x, check[i].y);
                     checkCell.classList.add('check');
                     checkCell.style.backgroundColor = '#dc1e1e';
                 }
 
+                addHistory(selectedInfo.player, {x: selectedInfo.x, y: selectedInfo.y}, {
+                    x: x,
+                    y: y
+                }, selectedInfo.chessPiece, check.length>0);
+
+                showHistory();
+                updateStatusBar();
                 return;
             }
         }
@@ -279,12 +291,11 @@ function showSteps(){
 
         showSelect(this);
         let possibleMoves = getPossibleMoves(cellInfo);
-        //possibleMoves = getAllPossibleMoves(getOpposite(chessState.turnToMove));
         for (let i = 0; i<possibleMoves.length; i++){
             showSelect(getCell(possibleMoves[i].x, possibleMoves[i].y), possibleMoves[i].capture)
         }
-
     }
+    updateStatusBar();
 }
 
 function getOpposite(player){
@@ -318,79 +329,10 @@ function getPossibleMoves(cell, boardState, itsCheckCheck = false){
 
 function getPossibleMovesQueen(cell, boardState, itsCheckCheck = false){
 
-    if(boardState === undefined)
-        boardState = chessState;
+    let possibleMovesRook = getPossibleMovesRook(cell, boardState, itsCheckCheck);
+    let possibleMovesBishop = getPossibleMovesBishop(cell, boardState, itsCheckCheck);
+    return [...possibleMovesRook,...possibleMovesBishop];
 
-    let x = cell.x;
-    let y = cell.y;
-    let player = boardState.turnToMove;
-    let steps = [];
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextX = x + i;
-        if(!checkAndAddStep(steps, x, y, nextX, y, player, boardState, itsCheckCheck))
-            break;
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextX = x - i;
-        if(!checkAndAddStep(steps, x, y, nextX, y, player, boardState, itsCheckCheck))
-            break;
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextY = y + i;
-        if(!checkAndAddStep(steps, x, y, x, nextY, player, boardState, itsCheckCheck))
-            break;
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextY = y - i;
-        if(!checkAndAddStep(steps, x, y, x, nextY, player, boardState, itsCheckCheck))
-            break;
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextX = x + i;
-        let nextY = y + i;
-
-        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
-            break;
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextX = x - i;
-        let nextY = y - i;
-
-        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
-            break;
-
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextX = x - i;
-        let nextY = y + i;
-
-        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
-            break;
-    }
-
-    for (let i = 1; i < sizeX; i++){
-
-        let nextX = x + i;
-        let nextY = y - i;
-
-        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
-            break;
-    }
-    return steps;
 }
 
 function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
@@ -749,7 +691,9 @@ function checkAndAddStep(steps, xNow, yNow, nextX, nextY, player, boardState, it
 
     let opposite = getOpposite(player);
 
-    if(!itsCheckCheck && checkFreeSpace(nextX, nextY, boardState) && (nextX >= 1 && nextY >= 1 && nextX <= sizeX && nextY <= sizeY)
+    if(!itsCheckCheck
+        && (checkFreeSpace(nextX, nextY, boardState) || checkCapture(nextX, nextY, player, boardState))
+        && (nextX >= 1 && nextY >= 1 && nextX <= sizeX && nextY <= sizeY)
         && isCheck(player, opposite, boardState, [{x: xNow, y: yNow}, {x: nextX, y: nextY}])){
         return true;
     }
@@ -776,4 +720,79 @@ function checkAndAddStep(steps, xNow, yNow, nextX, nextY, player, boardState, it
 
 function getCell(x,y){
     return document.querySelector(`div[data-x='${x}'][data-y='${y}']`)
+}
+
+function updateStatusBar() {
+    let statusBar = document.querySelector('#status-bar');
+    if (chessState.turnToMove === '') {
+        statusBar.innerHTML = "&uarr; For start press <span class=\"text-success\">new game</span> &uarr;";
+    } else {
+        let statusBarText = `${chessState.turnToMove}'s move`;
+        statusBar.innerHTML = statusBarText[0].toUpperCase() + statusBarText.slice(1);
+    }
+}
+
+function addHistory(player, from, to, chessPiece, check) {
+
+    if(player === 'black' && chessHistory.length === 0){
+        addHistory('white', {x:-1, y: -1}, {x:-1, y:-1}, '')
+    }
+
+    let abc = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+    let pieceName = '';
+    switch (chessPiece){
+        case 'queen':
+            pieceName = 'Q';
+            break;
+        case 'horse-left':
+        case 'horse-right':
+            pieceName = 'N';
+            break;
+        case 'king':
+            pieceName = 'K';
+            break;
+        case 'rook':
+            pieceName = 'R';
+            break;
+        case 'bishop':
+            pieceName = 'B';
+            break;
+    }
+
+    let representation = `${pieceName}${abc[from.x-1]}${from.y}-${abc[to.x-1]}${to.y}`;
+    if(check)
+        representation += '+';
+
+    chessHistory.push({
+        player: player,
+        from: from,
+        to: to,
+        check: check,
+        representation: representation
+    });
+}
+
+function showHistory(){
+    if(chessHistory.length === 0){
+        return;
+    }
+    let history = document.querySelector('.right-block');
+
+    let innerHTML = '<p class="history h5">History:</p>';
+
+    let stepNumber = Math.ceil(chessHistory.length / 2);
+
+    innerHTML += '<p><strong>' + stepNumber + '</strong>';
+    for(let i = chessHistory.length-1; i>=0; i--){
+
+        let stepNumberNext = Math.ceil(i / 2);
+        if(stepNumber !== stepNumberNext){
+            innerHTML += '</p><p><strong>' + stepNumberNext + '</strong>';
+            stepNumber = stepNumberNext;
+        }
+        innerHTML += chessHistory[i].representation + ' ';
+    }
+    innerHTML +='</p>';
+    history.innerHTML = innerHTML;
 }
