@@ -201,9 +201,6 @@ function showSteps(){
         squared[i].classList.remove('selected');
     }
 
-    let checkCell = document.querySelector('.check');
-    checkCell.classList.remove('check');
-
     let x = +this.dataset.x;
     let y = +this.dataset.y;
 
@@ -246,6 +243,27 @@ function showSteps(){
                 }
 
                 changeTurnToMove();
+
+                let checkCell = document.querySelector('.check');
+                if(checkCell !== null) {
+                    checkCell.classList.remove('check');
+                    checkCell.style.removeProperty('background-color');
+                }
+
+                let opposite;
+
+                if(chessState.turnToMove === 'white')
+                    opposite = 'black'
+                else if (chessState.turnToMove === 'black')
+                    opposite = 'white';
+
+                let check = checkCheck(chessState.turnToMove, opposite);
+                for (let i = 0; i<check.length; i++){
+                    checkCell = getCell(check[i].x, check[i].y);
+                    checkCell.classList.add('check');
+                    checkCell.style.backgroundColor = '#dc1e1e';
+                }
+
                 return;
             }
         }
@@ -261,6 +279,7 @@ function showSteps(){
 
         showSelect(this);
         let possibleMoves = getPossibleMoves(cellInfo);
+        //possibleMoves = getAllPossibleMoves(getOpposite(chessState.turnToMove));
         for (let i = 0; i<possibleMoves.length; i++){
             showSelect(getCell(possibleMoves[i].x, possibleMoves[i].y), possibleMoves[i].capture)
         }
@@ -268,60 +287,70 @@ function showSteps(){
     }
 }
 
-function getPossibleMoves(cell, boardState){
+function getOpposite(player){
+
+    if(player === 'white')
+        return 'black';
+    else if (player === 'black')
+        return  'white';
+    else
+        return '';
+}
+
+function getPossibleMoves(cell, boardState, itsCheckCheck = false){
 
     switch (cell.chessPiece){
         case 'pawn':
-            return getPossibleMovesPawn(cell, boardState);
+            return getPossibleMovesPawn(cell, boardState, itsCheckCheck);
         case 'queen':
-            return getPossibleMovesQueen(cell, boardState);
+            return getPossibleMovesQueen(cell, boardState, itsCheckCheck);
         case 'horse-left':
         case 'horse-right':
-            return getPossibleMovesHorse(cell, boardState);
+            return getPossibleMovesHorse(cell, boardState, itsCheckCheck);
         case 'king':
-            return getPossibleMovesKing(cell, boardState);
+            return getPossibleMovesKing(cell, boardState, itsCheckCheck);
         case 'rook':
-            return getPossibleMovesRook(cell, boardState);
+            return getPossibleMovesRook(cell, boardState, itsCheckCheck);
         case 'bishop':
-            return getPossibleMovesBishop(cell, boardState);
+            return getPossibleMovesBishop(cell, boardState, itsCheckCheck);
     }
 }
 
-function getPossibleMovesQueen(cell, boardState){
+function getPossibleMovesQueen(cell, boardState, itsCheckCheck = false){
 
     if(boardState === undefined)
         boardState = chessState;
 
     let x = cell.x;
     let y = cell.y;
-    let player = cell.player;
+    let player = boardState.turnToMove;
     let steps = [];
 
     for (let i = 1; i < sizeX; i++){
 
         let nextX = x + i;
-        if(!checkAndAddStep(steps, nextX, y, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, y, player, boardState, itsCheckCheck))
             break;
     }
 
     for (let i = 1; i < sizeX; i++){
 
         let nextX = x - i;
-        if(!checkAndAddStep(steps, nextX, y, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, y, player, boardState, itsCheckCheck))
             break;
     }
 
     for (let i = 1; i < sizeX; i++){
 
         let nextY = y + i;
-        if(!checkAndAddStep(steps, x, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, x, nextY, player, boardState, itsCheckCheck))
             break;
     }
 
     for (let i = 1; i < sizeX; i++){
 
         let nextY = y - i;
-        if(!checkAndAddStep(steps, x, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, x, nextY, player, boardState, itsCheckCheck))
             break;
     }
 
@@ -330,7 +359,7 @@ function getPossibleMovesQueen(cell, boardState){
         let nextX = x + i;
         let nextY = y + i;
 
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
 
@@ -339,7 +368,7 @@ function getPossibleMovesQueen(cell, boardState){
         let nextX = x - i;
         let nextY = y - i;
 
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
 
     }
@@ -349,7 +378,7 @@ function getPossibleMovesQueen(cell, boardState){
         let nextX = x - i;
         let nextY = y + i;
 
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
 
@@ -358,92 +387,129 @@ function getPossibleMovesQueen(cell, boardState){
         let nextX = x + i;
         let nextY = y - i;
 
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
     return steps;
 }
 
-function getPossibleMovesPawn(cell, boardState){
+function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
 
-    if(boardState === undefined)
+    if (boardState === undefined)
         boardState = chessState;
 
     let x = cell.x;
     let y = cell.y;
     let steps = [];
-    let player = cell.player;
+    let player = boardState.turnToMove;
+    let opposite = getOpposite(player);
 
-    if(cell.player === 'white'){
+    if (player === 'white') {
 
-        if(checkFreeSpace(x, y + 1, boardState))
-            steps.push({
-                x: x,
-                y: y + 1,
-                capture: false
-            });
-
-        if(checkFreeSpace(x, y + 1, boardState) && y === 2 && checkFreeSpace(x, y + 2, boardState) ){
-            steps.push({
-                x: +x,
-                y: +y + 2,
-                capture: false
-            })
+        if (checkFreeSpace(x, y + 1, boardState)) {
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {x: x, y: y + 1}]))
+                steps.push({
+                    x: x,
+                    y: y + 1,
+                    capture: false
+                });
         }
-        if(checkCapture(x + 1, y + 1, player, boardState))
-            steps.push({
-                x: x + 1,
-                y: y + 1,
-                capture: true
-            });
-        if(checkCapture(x - 1, y + 1, player,boardState))
-            steps.push({
-                x: x - 1,
-                y: y + 1,
-                capture: true
-            });
 
+
+        if (checkFreeSpace(x, y + 1, boardState) && y === 2 && checkFreeSpace(x, y + 2, boardState)) {
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {x: x, y: y + 2}])) {
+                steps.push({
+                    x: x,
+                    y: y + 2,
+                    capture: false
+                })
+            }
+        }
+
+        if (checkCapture(x + 1, y + 1, player, boardState))
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {
+                x: x + 1,
+                y: y + 1
+            }])) {
+                steps.push({
+                    x: x + 1,
+                    y: y + 1,
+                    capture: true
+                });
+            }
+
+        if (checkCapture(x - 1, y + 1, player, boardState))
+
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {
+                x: x - 1,
+                y: y + 1
+            }])) {
+                steps.push({
+                    x: x - 1,
+                    y: y + 1,
+                    capture: true
+                });
+            }
     }
 
-    if(cell.player === 'black'){
-        if(checkFreeSpace(x, y - 1,  boardState))
-            steps.push({
-                x: x,
-                y: y - 1,
-                capture: false
-            });
-
-        if(checkFreeSpace(x, y - 1,  boardState) && y === 7 && checkFreeSpace(x, y - 2, boardState) ){
-            steps.push({
-                x: x,
-                y: y - 2,
-                capture: false
-            })
+    if (player === 'black') {
+        if (checkFreeSpace(x, y - 1, boardState)) {
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {x: x, y: y - 1}])) {
+                steps.push({
+                    x: x,
+                    y: y - 1,
+                    capture: false
+                });
+            }
         }
-        if(checkCapture(x + 1, y - 1, boardState))
-            steps.push({
+
+
+        if (checkFreeSpace(x, y - 1, boardState) && y === 7 && checkFreeSpace(x, y - 2, boardState)) {
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {x: x, y: y - 2}])) {
+                steps.push({
+                    x: x,
+                    y: y - 2,
+                    capture: false
+                });
+            }
+        }
+
+        if (checkCapture(x + 1, y - 1, boardState)) {
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {
                 x: x + 1,
-                y: y - 1,
-                capture: true
-            });
-        if(checkCapture(x - 1, y - 1, platboardState))
-            steps.push({
+                y: y - 1
+            }])) {
+                steps.push({
+                    x: x + 1,
+                    y: y - 1,
+                    capture: true
+                });
+            }
+        }
+        if (checkCapture(x - 1, y - 1, boardState)) {
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x - 1, y: cell.y - 1}, {
                 x: x - 1,
-                y: y - 1,
-                capture: true
-            });
+                y: y - 1
+            }])) {
+                steps.push({
+                    x: x - 1,
+                    y: y - 1,
+                    capture: true
+                });
+            }
+        }
     }
     return steps;
 }
 
-function getPossibleMovesHorse(cell, boardState){
+function getPossibleMovesHorse(cell, boardState, itsCheckCheck = false){
 
     if(boardState === undefined)
         boardState = chessState;
 
     let x = cell.x;
     let y = cell.y;
-    let player = cell.player;
+    let player = boardState.turnToMove;
     let steps = [];
 
     let probableMoves = [
@@ -457,19 +523,19 @@ function getPossibleMovesHorse(cell, boardState){
         {'x': x + 1, 'y': y + 2}
     ];
     for(let i = 0; i< probableMoves.length; i++){
-        checkAndAddStep(steps, probableMoves[i].x, probableMoves[i].y, player, boardState);
+        checkAndAddStep(steps, x, y, probableMoves[i].x, probableMoves[i].y, player, boardState, itsCheckCheck);
     }
     return steps;
 }
 
-function getPossibleMovesKing(cell, boardState){
+function getPossibleMovesKing(cell, boardState, itsCheckCheck = false){
 
     if(boardState === undefined)
         boardState = chessState;
 
     let x = cell.x;
     let y = cell.y;
-    let player = cell.player;
+    let player = boardState.turnToMove;
     let steps = [];
 
     let probableMoves =  [
@@ -485,58 +551,58 @@ function getPossibleMovesKing(cell, boardState){
         {'x': x, 'y': y + 1}
     ];
     for(let i = 0; i< probableMoves.length; i++){
-        checkAndAddStep(steps, probableMoves[i].x, probableMoves[i].y, player, boardState);
+        checkAndAddStep(steps, x, y, probableMoves[i].x, probableMoves[i].y, player, boardState, itsCheckCheck);
     }
 
     //long-castling
     if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].leftRookMoved && !chessState.castlingDone[player].kingMoved
         && checkFreeSpace(2, y, boardState) && checkFreeSpace(3, y, boardState) && checkFreeSpace(4, y, boardState)){
-        checkAndAddStep(steps,3 ,y, player, boardState);
+        checkAndAddStep(steps, x, y,3 ,y, player, boardState, itsCheckCheck);
     }
     if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].rightRookMoved && !chessState.castlingDone[player].kingMoved
         && checkFreeSpace(6, y, boardState) && checkFreeSpace(7, y, boardState)){
-        checkAndAddStep(steps,7 ,y, player, boardState);
+        checkAndAddStep(steps,x, y,7 ,y, player, boardState, itsCheckCheck);
     }
 
     return steps;
 
 }
 
-function getPossibleMovesRook(cell, boardState){
+function getPossibleMovesRook(cell, boardState, itsCheckCheck = false){
 
     if(boardState === undefined)
         boardState = chessState;
 
     let x = cell.x;
     let y = cell.y;
-    let player = cell.player;
+    let player = boardState.turnToMove;
     let steps = [];
 
     for (let i = 1; i < sizeX; i++){
         let nextY = y + i;
-        if(!checkAndAddStep(steps, x, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, x, nextY, player, boardState, itsCheckCheck))
             break;
     }
     for (let i = 1; i < sizeX; i++){
         let nextY = y - i;
-        if(!checkAndAddStep(steps, x, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, x, nextY, player, boardState, itsCheckCheck))
             break;
     }
     for (let i = 1; i < sizeX; i++){
         let nextX = x + i;
-        if(!checkAndAddStep(steps, nextX, y, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, y, player, boardState, itsCheckCheck))
             break;
     }
 
     for (let i = 1; i < sizeX; i++){
         let nextX = x - i;
-        if(!checkAndAddStep(steps, nextX, y, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, y, player, boardState, itsCheckCheck))
             break;
     }
     return steps;
 }
 
-function getPossibleMovesBishop(cell, boardState){
+function getPossibleMovesBishop(cell, boardState, itsCheckCheck = false){
 
     if(boardState === undefined)
         boardState = chessState;
@@ -549,25 +615,25 @@ function getPossibleMovesBishop(cell, boardState){
     for (let i = 1; i < sizeX; i++){
         let nextY = y + i;
         let nextX = x + i;
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
     for (let i = 1; i < sizeX; i++){
         let nextY = y + i;
         let nextX = x - i;
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
     for (let i = 1; i < sizeX; i++){
         let nextY = y - i;
         let nextX = x - i;
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps, x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
     for (let i = 1; i < sizeX; i++){
         let nextY = y - i;
         let nextX = x + i;
-        if(!checkAndAddStep(steps, nextX, nextY, player, boardState))
+        if(!checkAndAddStep(steps,x, y, nextX, nextY, player, boardState, itsCheckCheck))
             break;
     }
     return steps;
@@ -588,51 +654,64 @@ function showSelect(element, capture){
     element.classList.add('selected');
 }
 
-function checkCheck(player, opposite, boardState){
+function isCheck(player, opposite, boardState, step){
+    return checkCheck(player, opposite, boardState, step).length !== 0;
+}
+
+function checkCheck(player, opposite, boardState, step){
 
     if(boardState === undefined)
         boardState = chessState;
 
     let kingX = -1;
     let kingY = -1;
-    for(let x = 0; x < sizeX; x++){
-        for(let y = 0; y < sizeY; y++){
-            let cellInfo = boardState.positions[x][y];
-            if(cellInfo.player === player && cellInfo.chessPiece === 'king'){
-                kingX = cellInfo.x;
-                kingY = cellInfo.y;
+    if (step !== undefined && boardState.positions[step[0].x - 1][step[0].y - 1].chessPiece === 'king') {
+
+        kingX = step[1].x;
+        kingY = step[1].y;
+
+    }
+    else{
+        for(let x = 0; x < sizeX; x++){
+            for(let y = 0; y < sizeY; y++){
+                let cellInfo = boardState.positions[x][y];
+                if(cellInfo.player === player && cellInfo.chessPiece === 'king'){
+                    kingX = cellInfo.x;
+                    kingY = cellInfo.y;
+                }
             }
         }
     }
 
-    let allSteps = getAllPossibleMoves(opposite);
+
+    let allSteps = getAllPossibleMoves(opposite, step, true);
     return allSteps.filter(item => item.x === kingX && item.y === kingY);
 }
 
-function getAllPossibleMoves(player, step){
+function getAllPossibleMoves(player, step, itsCheckCheck = false){
 
     let boardState;
+
+    boardState = JSON.parse(JSON.stringify(chessState));
+    boardState.turnToMove = player;
+
     if(step !== undefined){
-        boardState = JSON.parse(JSON.stringify(chessState));
-        boardState.positions[step[1].x-1][step[1].y-1] = boardState.positions[step[0].x-1][step[0].y-1];
-        boardState.positions[step[1].x-1][step[1].y-1].x = step[1].x;
-        boardState.positions[step[1].x-1][step[1].y-1].y = step[1].y;
-        boardState.positions[step[0].x-1][step[0].y-1] = {
+        boardState.positions[step[1].x - 1][step[1].y - 1] = boardState.positions[step[0].x - 1][step[0].y - 1];
+        boardState.positions[step[1].x - 1][step[1].y - 1].x = step[1].x;
+        boardState.positions[step[1].x - 1][step[1].y - 1].y = step[1].y;
+        boardState.positions[step[0].x - 1][step[0].y - 1] = {
             player: '',
             chessPiece: '',
             x: step[0].x,
             y: step[0].y,
         }
     }
-    else
-        boardState = chessState;
-
     let allSteps = [];
     for(let x = 0; x < sizeX; x++){
         for(let y = 0; y < sizeY; y++){
             let cellInfo = boardState.positions[x][y];
             if(cellInfo.player === player){
-                let possibleMoves = getPossibleMoves(cellInfo, boardState);
+                let possibleMoves = getPossibleMoves(cellInfo, boardState, itsCheckCheck);
                 allSteps.push(...possibleMoves);
             }
         }
@@ -663,10 +742,17 @@ function checkCapture(x, y, player, boardState){
 
 }
 
-function checkAndAddStep(steps, nextX, nextY, player, boardState){
+function checkAndAddStep(steps, xNow, yNow, nextX, nextY, player, boardState, itsCheckCheck = false){
 
     if(boardState === undefined)
         boardState = chessState;
+
+    let opposite = getOpposite(player);
+
+    if(!itsCheckCheck && checkFreeSpace(nextX, nextY, boardState) && (nextX >= 1 && nextY >= 1 && nextX <= sizeX && nextY <= sizeY)
+        && isCheck(player, opposite, boardState, [{x: xNow, y: yNow}, {x: nextX, y: nextY}])){
+        return true;
+    }
 
     if (checkFreeSpace(nextX, nextY, boardState)){
         steps.push({
