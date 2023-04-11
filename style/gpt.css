@@ -1,0 +1,108 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn {
+    margin: 2px;
+}
+
+.container {
+    display: flex;
+}
+
+#left-block {
+    width: 20%;
+    background-color: #eee;
+    padding: 20px;
+    text-align: center;
+}
+
+#right-block {
+    width: 20%;
+    background-color: #eee;
+    padding: 20px;
+    text-align: center;
+}
+
+.chessboard {
+    width: 60%;
+}
+
+.rowLine {
+    display: flex;
+    justify-content: center;
+}
+
+.square {
+    width: 40px;
+    height: 40px;
+    border: 1px solid black;
+}
+
+.white {
+    background-color: white;
+}
+
+.black {
+    background-color: black;
+}
+
+.bd-top {
+    border-top: none;
+}
+
+.bd-left {
+    border-left: none;
+}
+
+.bd-right {
+    border-right: none;
+}
+
+.bd-bottom {
+    border-bottom: none;
+}
+
+.left-line {
+    width: 20px;
+    text-align: right;
+}
+
+.down-row {
+    display: flex;
+}
+
+.down-cell {
+    width: 40px;
+    text-align: center;
+}
+
+#status-bar {
+    text-align: center;
+    font-weight: bold;
+    padding-bottom: 20px;
+    font-size: 20px;
+}
+
+#additionalBoard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    background-color: #eee;
+}
+
+.history {
+    margin: 0;
+}
+
+#history {
+    height: 200px;
+    overflow: auto;
+}

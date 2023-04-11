@@ -2,23 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="description" content="Free chess game. ">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Checkmates</title>
     <link rel="icon" href="/favicon-32x32.png" type="image/x-icon">
     <link rel="stylesheet" href="style/bootstrap.css">
-    <link rel="stylesheet" href="style/style.css?9">
+    <link rel="stylesheet" href="style/style.css?18">
 </head>
 <body>
 <header class="header navbar-text py-3 row-cols-sm-5" >
-    <button class="btn btn-success rounded-pill px-3" id="button-start">NEW GAME</button>
-    <button class="btn btn-outline-dark rounded-pill px-3" id="button-arrange">ARRANGE PIECES</button>
-    <button class="btn btn-outline-dark rounded-pill px-3" id="button-load">LOAD GAME</button>
+    <button class="btn btn-success rounded-pill px-3 me-2" id="button-start">NEW GAME</button>
+    <button class="btn btn-outline-dark rounded-pill px-3 me-2" id="button-arrange">ARRANGE PIECES</button>
+    <button class="btn btn-outline-dark rounded-pill px-3 me-2" id="button-load">LOAD GAME</button>
 </header>
 <div class="container">
+    <div id="status-bar" class="fw-bolder pb-md-3 fs-5">
+        &uarr; For start press <span class="text-success">new game</span> &uarr;
+    </div>
+</div>
+<div class="container">
+    <div class="left-block" id="left-block">
+        <!--<p class="history h5">Select piece:</p>
+        <div class="smallChessBoard">
+            <div class="smallRow">
+                <div class="smallSquare" data-x="1" data-y="1"></div>
+                <div class="smallSquare" data-x="2" data-y="1"></div>
+            </div>
+            <div class="smallRow">
+                <div class="smallSquare" data-x="1" data-y="1"></div>
+                <div class="smallSquare" data-x="2" data-y="1"></div>
+            </div>
+        </div>
+        -->
+    </div>
     <div class="chessboard" id="chessboard">
 
     </div>
+    <div class="right-block" id="right-block">
+        <p class="history h5">History: (<a href="#" id="button-hide">hide</a>) </p>
+        <div id="history"></div>
+    </div>
 </div>
-<script src="engine.js?7"></script>
-<script src="chess.js?5"></script>
+
+<div class="container">
+    <div id="additionalBoard">
+
+    </div>
+</div>
+<script src="engine.js?8"></script>
+<script src="chess.js?6"></script>
 </body>
 </html>

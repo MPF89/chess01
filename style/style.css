@@ -1,7 +1,7 @@
 
 .header{
     max-width: 1024px;
-    margin: 10px auto;
+    margin: 0 auto;
     text-align: center;
 }
 
@@ -9,30 +9,50 @@
     display: flex;
     margin: 0 auto;
     width: fit-content;
+    flex-wrap: wrap;
 }
 .chessboard {
-    width: 650px;
-    height: 650px;
+    width: 615px;
+    height: 630px;
     display: block;
+}
 
+.smallChessBoard {
+    width: 155px;
+    display: block;
+    padding-bottom: 10px;
+}
+.smallRow{
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    height: 75px;
+}
+.smallSquare{
+    border: black 1px solid;
+    width: 75px;
+    height: 75px;
+}
+.smallSquare :hover{
+    background: #717171;
 }
 
 .img-pieces{
     margin: 7px;
-    max-height: 65px;
-    max-width: 65px;
+    max-height: 60px;
+    max-width: 60px;
 }
 
 .rowLine {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    height: 80px;
+    height: 75px;
 }
 
 .square {
-    width: 80px;
-    height: 80px;
+    width: 75px;
+    height: 75px;
     text-align: center;
 }
 
@@ -40,25 +60,33 @@
     background-color: rgba(135, 114, 241, 0.88);
 }
 
+header{
+    display: flex;
+    justify-content: center;
+}
+
 .left-line {
     width: 10px;
-    height: 80px;
+    height: 75px;
     padding-top: 25px;
 }
 
 .left-block{
-    max-width: 300px;
+    width: 160px;
     display: block;
+    margin-right: 10px;
+    margin-left: 10px;
+    padding-bottom: 10px;
 }
 
 .right-block{
-    max-width: 300px;
+    width: 160px;
     display: block;
-    background-color: #0a58ca;
+    margin-left: 10px;
 }
 
 .down-cell{
-    width: 80px;
+    width: 75px;
     height: 10px;
 }
 
@@ -94,4 +122,235 @@
 
 .check{
     background: red;
+}
+
+.history{
+
+}
+
+/* Мобильные устройства (портретная ориентация) */
+@media (max-width: 480px) {
+    .chessboard {
+        width: 410px;
+        height: 410px;
+    }
+
+    .square {
+        width: 50px;
+        height: 50px;
+    }
+
+    .header {
+        flex-direction: column;
+    }
+
+    .header .btn {
+        margin-bottom: 10px;
+    }
+
+    .rowLine {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        height: 50px;
+    }
+
+    .left-line {
+        width: 10px;
+        height: 37px;
+        padding-top: 10px;
+    }
+
+    .img-pieces{
+        margin: 3px;
+        max-height: 40px;
+        max-width: 40px;
+    }
+    .down-cell{
+        width: 50px;
+        height: 10px;
+    }
+
+    .right-block{
+        margin-top: 20px;
+    }
+
+    .header{
+        flex-direction: row;
+        font-size: 1rem !important;
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .fs-5{
+        font-size: 0.8rem !important;
+    }
+    .smallSquare{
+        border: black 1px solid;
+        width: 50px;
+        height: 50px;
+    }
+
+    .py-3{
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .smallRow{
+        height: 50px;
+    }
+}
+
+/* Планшеты (портретная ориентация) */
+@media (min-width: 481px) and (max-width: 767px) {
+
+    .chessboard {
+        width: 490px;
+        height: 490px;
+    }
+
+    .square {
+        width: 60px;
+        height: 60px;
+    }
+
+    .header {
+        flex-direction: column;
+    }
+
+    .header .btn {
+        margin-bottom: 10px;
+    }
+
+    .rowLine {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        height: 60px;
+    }
+
+    .left-line {
+        width: 10px;
+        height: 60px;
+        padding-top: 10px;
+    }
+
+    .img-pieces{
+        margin: 5px;
+        max-height: 50px;
+        max-width: 50px;
+    }
+    .down-cell{
+        width: 60px;
+        height: 10px;
+    }
+
+    .right-block{
+        margin-top: 20px;
+    }
+
+    .header{
+        flex-direction: row;
+        font-size: 1rem !important;
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .fs-5{
+        font-size: 0.8rem !important;
+    }
+    .smallSquare{
+        border: black 1px solid;
+        width: 50px;
+        height: 50px;
+    }
+
+    .py-3{
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .smallRow{
+        height: 50px;
+    }
+}
+
+/* Планшеты (альбомная ориентация) и небольшие десктопы */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .chessboard {
+        width: 540px;
+        height: 540px;
+    }
+
+    .square {
+        width: 65px;
+        height: 65px;
+    }
+
+    .header {
+        flex-direction: column;
+    }
+
+    .header .btn {
+        margin-bottom: 10px;
+    }
+
+    .rowLine {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        height: 65px;
+    }
+
+    .left-line {
+        width: 10px;
+        height: 65px;
+        padding-top: 10px;
+    }
+
+    .img-pieces{
+        margin: 5px;
+        max-height: 55px;
+        max-width: 55px;
+    }
+    .down-cell{
+        width: 65px;
+        height: 10px;
+    }
+
+    .right-block{
+        margin-top: 20px;
+    }
+
+    .header{
+        flex-direction: row;
+        font-size: 1rem !important;
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .fs-5{
+        font-size: 0.8rem !important;
+    }
+    .smallSquare{
+        border: black 1px solid;
+        width: 55px;
+        height: 55px;
+    }
+
+    .py-3{
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .smallRow{
+        height: 55px;
+    }
+
+    /* Другие стили для планшетов и небольших десктопов */
+}
+
+/* Большие десктопы */
+@media (min-width: 1025px) {
+    /* Ваши стили для больших десктопов, если это необходимо */
 }

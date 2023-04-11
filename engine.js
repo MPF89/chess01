@@ -124,9 +124,13 @@ function iniStandard(){
                 kingMoved: false
         },
     }
+    chessState.winner = '';
+    chessState.finished = false;
     chessHistory = [];
     setTurnToMove('white');
     updateStatusBar();
+    showHistory();
+    saveHistory();
 }
 
 function setPiece(player, piece, x, y){
@@ -141,7 +145,8 @@ function setPiece(player, piece, x, y){
         square.innerHTML = '';
 }
 
-function changeTurnToMove(){
+function changePlayer(){
+
     if(chessState.turnToMove === '')
         setTurnToMove('white');
     else if(chessState.turnToMove === 'white')
@@ -191,6 +196,81 @@ function showNewGameOptions(){
     divButton.append(newButtonRemote);
 
     chessboard.append(divButton);
+
+    chessHistory = [];
+}
+
+function showSelectPawnMenu(player, x, y, capture) {
+
+    let leftBlock = document.querySelector('.left-block');
+    let pH5 = document.createElement('p');
+    pH5.classList.add('h5', 'history');
+    pH5.textContent = 'Select piece:';
+    leftBlock.append(pH5);
+
+    createSmallBoard(leftBlock, 2,2);
+
+    let allDivSquares = document.querySelectorAll('.smallSquare');
+    let pieces = ['queen', 'horse-right', 'rook', 'bishop'];
+
+    for(let i = 0; i<allDivSquares.length; i++){
+        allDivSquares[i].onclick = makePromotion;
+        allDivSquares[i].setAttribute('data-fromX', x);
+        allDivSquares[i].setAttribute('data-fromY', y);
+        allDivSquares[i].setAttribute('data-piece', pieces[i]);
+        allDivSquares[i].setAttribute('data-capture', capture);
+        allDivSquares[i].innerHTML = "<img src='images/pieces/" + player + '/' + pieces[i] + ".png' alt='"+ pieces[i] + "' class='img-pieces'>";
+    }
+    soundClick();
+}
+
+function makePromotion(){
+
+    let player;
+    if(chessState.turnToMove === 'wait-black')
+        player = 'black';
+    else
+        player = 'white';
+    setTurnToMove(getOpposite(player));
+    setPiece(player,this.dataset.piece, this.dataset.fromx, this.dataset.fromy);
+
+    let pieceName = getShotPieceName(this.dataset.piece);
+
+    let checkMateInfo = checkAndSetupCheckAndMate();
+    let isCapture = this.dataset.capture;
+
+    addHistory(player, {x: chessState.selected.x, y:chessState.selected.y},
+        {x: this.dataset.fromx, y: this.dataset.fromy}, 'pawn', checkMateInfo.check, false, false,
+        checkMateInfo.checkAndMate, checkMateInfo.pat, isCapture, false, pieceName);
+
+    chessState.selected.x = -1;
+    chessState.selected.y = -1;
+
+    updateCheckAndMateInfo(checkMateInfo);
+    hideSelectPawnMenu();
+    updateStatusBar();
+    showHistory();
+}
+
+function createSmallBoard(leftBlock, x, y) {
+    for (let i = 0; i < y; i++) {
+
+        let divLine = document.createElement('div');
+        divLine.classList.add('smallRow');
+
+        for (let k = 0; k < x; k++) {
+            let divSquare = document.createElement('div');
+            divSquare.classList.add('smallSquare');
+            divLine.append(divSquare);
+        }
+
+        leftBlock.append(divLine);
+    }
+}
+
+function hideSelectPawnMenu(){
+    let leftBlock = document.querySelector('.left-block');
+    leftBlock.innerHTML = '';
 }
 
 function showSteps(){
@@ -215,17 +295,6 @@ function showSteps(){
         for (let i = 0; i<possibleMoves.length; i++){
             if(x === possibleMoves[i].x && y === possibleMoves[i].y){
 
-                let opposite;
-
-                if(chessState.turnToMove === 'white')
-                    opposite = 'black'
-                else if (chessState.turnToMove === 'black')
-                    opposite = 'white';
-
-
-
-                console.log(chessHistory);
-
                 setPiece(selectedInfo.player, selectedInfo.chessPiece, x, y);
                 setPiece('', '', selectedInfo.x, selectedInfo.y);
 
@@ -240,40 +309,70 @@ function showSteps(){
                 if(cellInfo.chessPiece === 'rook' && selectedInfo.x === 8){
                     chessState.castlingDone[cellInfo.player].rightRookMoved = true;
                 }
-                if(cellInfo.chessPiece === 'king' && x === 3){
+
+                let itsLongCastling = false;
+                let itsShotCastling = false;
+                if(cellInfo.chessPiece === 'king' && x === 3 && chessState.selected.x === 5){
                     setPiece(cellInfo.player, 'rook', 4, y);
                     setPiece('', '', 1, selectedInfo.y);
+                    itsLongCastling = true;
                 }
 
-                if(cellInfo.chessPiece === 'king' && x === 7){
+                if(cellInfo.chessPiece === 'king' && x === 7 && chessState.selected.x === 5){
                     setPiece(cellInfo.player, 'rook', 6, y);
                     setPiece('', '', 8, selectedInfo.y);
+                    itsShotCastling = true;
                 }
+
+                let enPassant = false;
+                if(cellInfo.chessPiece === 'pawn' && y === 1 && chessState.turnToMove === 'black'){
+
+                    showSelectPawnMenu('black', x, y, possibleMoves[i].capture);
+                    chessState.turnToMove = 'wait-black';
+                    return;
+                }
+                 else if (cellInfo.chessPiece === 'pawn' && y === 8 && chessState.turnToMove === 'white'){
+                    showSelectPawnMenu('white', x, y, possibleMoves[i].capture);
+                    chessState.turnToMove = 'wait-white';
+                    return;
+                } else if (cellInfo.chessPiece === 'pawn' && selectedInfo.x !== x ){
+
+                     let prevMove = getLastMove();
+                     if(prevMove !== undefined
+                         && prevMove.chessPiece === 'pawn'
+                         && Math.abs(prevMove.from.y - prevMove.to.y) === 2){
+
+                         if (cellInfo.player === 'white')
+                             setPiece('', '', x, y-1);
+                         else if(cellInfo.player === 'black')
+                             setPiece('', '', x, y+1);
+
+                         enPassant = true;
+                     }
+
+                }
+
                 chessState.selected = {
                     x: -1,
                     y: -1,
                     chessPiece: '',
                 }
-                let check = checkCheck(chessState.turnToMove, opposite);
-                changeTurnToMove();
 
-                let checkCell = document.querySelector('.check');
-                if(checkCell !== null) {
-                    checkCell.classList.remove('check');
-                    checkCell.style.removeProperty('background-color');
-                }
+                changePlayer();
 
-                for (let i = 0; i<check.length; i++){
-                    checkCell = getCell(check[i].x, check[i].y);
-                    checkCell.classList.add('check');
-                    checkCell.style.backgroundColor = '#dc1e1e';
-                }
+                let opposite = getOpposite(chessState.turnToMove);
+                let checkMateInfo = checkAndSetupCheckAndMate();
 
-                addHistory(selectedInfo.player, {x: selectedInfo.x, y: selectedInfo.y}, {
-                    x: x,
-                    y: y
-                }, selectedInfo.chessPiece, check.length>0);
+                updateCheckAndMateInfo(checkMateInfo);
 
+                addHistory(opposite, {x: selectedInfo.x, y: selectedInfo.y}, {
+                        x: x,
+                        y: y
+                    },
+                    cellInfo.chessPiece, checkMateInfo.check,
+                    itsShotCastling, itsLongCastling,
+                    checkMateInfo.checkAndMate, checkMateInfo.pat,  possibleMoves[i].capture, enPassant);
+                soundClick();
                 showHistory();
                 updateStatusBar();
                 return;
@@ -298,14 +397,91 @@ function showSteps(){
     updateStatusBar();
 }
 
-function getOpposite(player){
+function showSelect(element, capture){
 
-    if(player === 'white')
-        return 'black';
-    else if (player === 'black')
-        return  'white';
-    else
-        return '';
+    if(capture && element.classList.contains('white'))
+        element.style.backgroundColor = '#ec6f6f';
+    else if (capture && element.classList.contains('black'))
+        element.style.backgroundColor = '#ef5959';
+    else if(element.classList.contains('white')){
+        element.style.backgroundColor = '#ffdddd';
+    }
+    else if(element.classList.contains('black')){
+        element.style.backgroundColor = '#e7b1b1';
+    }
+    element.classList.add('selected');
+}
+
+function checkAndSetupCheckAndMate(){
+
+    let opposite = getOpposite(chessState.turnToMove);
+    let check = checkCheck(chessState.turnToMove, opposite);
+
+    let isCheckAndMate = false;
+    let allPossibleMoves = getAllPossibleMoves(chessState.turnToMove)
+    if(check.length > 0 && allPossibleMoves.length === 0){
+        chessState.winner = opposite;
+        chessState.finished = true;
+        isCheckAndMate = true;
+    }
+
+    let isPat = false;
+    if(check.length === 0 && allPossibleMoves.length === 0){
+        chessState.winner = 'pat';
+        chessState.finished = true;
+        isPat = true;
+    }
+    return {
+        check: check.length > 0,
+        checkAndMate: isCheckAndMate,
+        pat: isPat,
+        checkCells: check
+    }
+}
+
+function updateCheckAndMateInfo(checkMateInfo){
+    let checkCell = document.querySelector('.check');
+    if(checkCell !== null) {
+        checkCell.classList.remove('check');
+        checkCell.style.removeProperty('background-color');
+    }
+
+    for (let i = 0; i<checkMateInfo.checkCells.length; i++){
+        checkCell = getCell(checkMateInfo.checkCells[i].x, checkMateInfo.checkCells[i].y);
+        checkCell.classList.add('check');
+        checkCell.style.backgroundColor = '#dc1e1e';
+    }
+}
+
+function getAllPossibleMoves(player, step = undefined, itsCheckCheck = false){
+
+    let boardState;
+
+    boardState = JSON.parse(JSON.stringify(chessState));
+    boardState.turnToMove = player;
+
+    if(step !== undefined){
+        boardState.positions[step[1].x - 1][step[1].y - 1] = boardState.positions[step[0].x - 1][step[0].y - 1];
+        boardState.positions[step[1].x - 1][step[1].y - 1].x = step[1].x;
+        boardState.positions[step[1].x - 1][step[1].y - 1].y = step[1].y;
+        boardState.positions[step[0].x - 1][step[0].y - 1] = {
+            player: '',
+            chessPiece: '',
+            x: step[0].x,
+            y: step[0].y,
+        }
+    }
+    let allSteps = [];
+    for(let x = 0; x < sizeX; x++){
+        for(let y = 0; y < sizeY; y++){
+            let cellInfo = boardState.positions[x][y];
+            if(cellInfo.player === player){
+                let possibleMoves = getPossibleMoves(cellInfo, boardState, itsCheckCheck);
+                allSteps.push(...possibleMoves);
+            }
+        }
+    }
+    return allSteps;
 }
 
 function getPossibleMoves(cell, boardState, itsCheckCheck = false){
@@ -324,6 +500,8 @@ function getPossibleMoves(cell, boardState, itsCheckCheck = false){
             return getPossibleMovesRook(cell, boardState, itsCheckCheck);
         case 'bishop':
             return getPossibleMovesBishop(cell, boardState, itsCheckCheck);
+        default:
+            return [];
     }
 }
 
@@ -346,6 +524,8 @@ function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
     let player = boardState.turnToMove;
     let opposite = getOpposite(player);
 
+    let prevMove = getLastMove();
+
     if (player === 'white') {
 
         if (checkFreeSpace(x, y + 1, boardState)) {
@@ -356,7 +536,6 @@ function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
                     capture: false
                 });
         }
-
 
         if (checkFreeSpace(x, y + 1, boardState) && y === 2 && checkFreeSpace(x, y + 2, boardState)) {
             if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {x: x, y: y + 2}])) {
@@ -416,7 +595,7 @@ function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
             }
         }
 
-        if (checkCapture(x + 1, y - 1, boardState)) {
+        if (checkCapture(x + 1, y - 1, player, boardState))
             if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {
                 x: x + 1,
                 y: y - 1
@@ -427,9 +606,9 @@ function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
                     capture: true
                 });
             }
-        }
-        if (checkCapture(x - 1, y - 1, boardState)) {
-            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x - 1, y: cell.y - 1}, {
+
+        if (checkCapture(x - 1, y - 1, player, boardState))
+            if (itsCheckCheck || !isCheck(player, opposite, boardState, [{x: cell.x, y: cell.y}, {
                 x: x - 1,
                 y: y - 1
             }])) {
@@ -439,8 +618,30 @@ function getPossibleMovesPawn(cell, boardState, itsCheckCheck = false) {
                     capture: true
                 });
             }
+    }
+
+    if(prevMove !== undefined
+        && prevMove.chessPiece === 'pawn'
+        && Math.abs(prevMove.from.y - prevMove.to.y) === 2
+        && Math.abs(prevMove.from.x - x) === 1
+        && prevMove.to.y === y){
+
+        if(prevMove.player === 'black'){
+            steps.push({
+                x: prevMove.from.x,
+                y: y + 1,
+                capture: true
+            });
+        }
+        if(prevMove.player === 'white'){
+            steps.push({
+                x: prevMove.from.x,
+                y: y - 1,
+                capture: true
+            });
         }
     }
+
     return steps;
 }
 
@@ -496,18 +697,29 @@ function getPossibleMovesKing(cell, boardState, itsCheckCheck = false){
         checkAndAddStep(steps, x, y, probableMoves[i].x, probableMoves[i].y, player, boardState, itsCheckCheck);
     }
 
-    //long-castling
+
     if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].leftRookMoved && !chessState.castlingDone[player].kingMoved
         && checkFreeSpace(2, y, boardState) && checkFreeSpace(3, y, boardState) && checkFreeSpace(4, y, boardState)){
-        checkAndAddStep(steps, x, y,3 ,y, player, boardState, itsCheckCheck);
+
+        let opposite = getOpposite(player);
+        let allPossibleMoves = getAllPossibleMoves(opposite, undefined, true);
+        let filterPossibleMoves = allPossibleMoves.filter(item=>{
+            return (item.x >= 3 && item.x<=5) && item.y===y
+        });
+        if(filterPossibleMoves.length === 0)
+            checkAndAddStep(steps, x, y,3 ,y, player, boardState, itsCheckCheck);
     }
     if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].rightRookMoved && !chessState.castlingDone[player].kingMoved
         && checkFreeSpace(6, y, boardState) && checkFreeSpace(7, y, boardState)){
-        checkAndAddStep(steps,x, y,7 ,y, player, boardState, itsCheckCheck);
+
+        let opposite = getOpposite(player);
+        let allPossibleMoves = getAllPossibleMoves(opposite, undefined, true);
+        let filterPossibleMoves = allPossibleMoves.filter(item => item.x >= 5 && item.x<=7 && item.y===y);
+        if(filterPossibleMoves.length === 0)
+            checkAndAddStep(steps,x, y,7 ,y, player, boardState, itsCheckCheck);
     }
 
     return steps;
-
 }
 
 function getPossibleMovesRook(cell, boardState, itsCheckCheck = false){
@@ -581,21 +793,6 @@ function getPossibleMovesBishop(cell, boardState, itsCheckCheck = false){
     return steps;
 }
 
-function showSelect(element, capture){
-
-    if(capture && element.classList.contains('white'))
-        element.style.backgroundColor = '#ec6f6f';
-    else if (capture && element.classList.contains('black'))
-        element.style.backgroundColor = '#ef5959';
-    else if(element.classList.contains('white')){
-        element.style.backgroundColor = '#ffdddd';
-    }
-    else if(element.classList.contains('black')){
-        element.style.backgroundColor = '#e7b1b1';
-    }
-    element.classList.add('selected');
-}
-
 function isCheck(player, opposite, boardState, step){
     return checkCheck(player, opposite, boardState, step).length !== 0;
 }
@@ -628,37 +825,6 @@ function checkCheck(player, opposite, boardState, step){
 
     let allSteps = getAllPossibleMoves(opposite, step, true);
     return allSteps.filter(item => item.x === kingX && item.y === kingY);
-}
-
-function getAllPossibleMoves(player, step, itsCheckCheck = false){
-
-    let boardState;
-
-    boardState = JSON.parse(JSON.stringify(chessState));
-    boardState.turnToMove = player;
-
-    if(step !== undefined){
-        boardState.positions[step[1].x - 1][step[1].y - 1] = boardState.positions[step[0].x - 1][step[0].y - 1];
-        boardState.positions[step[1].x - 1][step[1].y - 1].x = step[1].x;
-        boardState.positions[step[1].x - 1][step[1].y - 1].y = step[1].y;
-        boardState.positions[step[0].x - 1][step[0].y - 1] = {
-            player: '',
-            chessPiece: '',
-            x: step[0].x,
-            y: step[0].y,
-        }
-    }
-    let allSteps = [];
-    for(let x = 0; x < sizeX; x++){
-        for(let y = 0; y < sizeY; y++){
-            let cellInfo = boardState.positions[x][y];
-            if(cellInfo.player === player){
-                let possibleMoves = getPossibleMoves(cellInfo, boardState, itsCheckCheck);
-                allSteps.push(...possibleMoves);
-            }
-        }
-    }
-    return allSteps;
 }
 
 function checkFreeSpace(x, y, boardState){
@@ -723,8 +889,13 @@ function getCell(x,y){
 }
 
 function updateStatusBar() {
+
     let statusBar = document.querySelector('#status-bar');
-    if (chessState.turnToMove === '') {
+    if(chessState.finished && chessState.winner !== 'pat')
+        statusBar.innerHTML = 'Check and mate! <span class="text-capitalize">' + chessState.winner +'</span> wins!';
+    else if (chessState.finished && chessState.winner === 'pat')
+        statusBar.innerHTML = 'Draw! Pat!';
+    else if (chessState.turnToMove === '') {
         statusBar.innerHTML = "&uarr; For start press <span class=\"text-success\">new game</span> &uarr;";
     } else {
         let statusBarText = `${chessState.turnToMove}'s move`;
@@ -732,67 +903,152 @@ function updateStatusBar() {
     }
 }
 
-function addHistory(player, from, to, chessPiece, check) {
+function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLongCastling,
+                    isCheckAndMate, isPat, isCapture, enPassant = false, transformation = '') {
 
     if(player === 'black' && chessHistory.length === 0){
-        addHistory('white', {x:-1, y: -1}, {x:-1, y:-1}, '')
+        addHistory('white', {x:-1, y: -1}, {x:-1, y:-1}, '', false, false)
     }
 
-    let abc = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    let separator = '-';
+    if(isCapture)
+        separator = 'x';
 
-    let pieceName = '';
-    switch (chessPiece){
-        case 'queen':
-            pieceName = 'Q';
-            break;
-        case 'horse-left':
-        case 'horse-right':
-            pieceName = 'N';
-            break;
-        case 'king':
-            pieceName = 'K';
-            break;
-        case 'rook':
-            pieceName = 'R';
-            break;
-        case 'bishop':
-            pieceName = 'B';
-            break;
+    let representation;
+    if(from.x === -1){
+        representation = '...';
     }
-
-    let representation = `${pieceName}${abc[from.x-1]}${from.y}-${abc[to.x-1]}${to.y}`;
+    else if (itsShotCastling)
+        representation = '0-0';
+    else if (itsLongCastling)
+        representation = '0-0-0';
+    else {
+        let abc = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        let pieceName = getShotPieceName(chessPiece);
+        representation = `${pieceName}${abc[from.x-1]}${from.y}${separator}${abc[to.x-1]}${to.y}`;
+    }
     if(check)
         representation += '+';
 
-    chessHistory.push({
+    if(isCheckAndMate)
+        representation += '#';
+
+    if(isPat)
+        representation += '=';
+
+    if(enPassant)
+        representation += ' e.p.';
+    representation += transformation;
+
+        chessHistory.push({
         player: player,
         from: from,
         to: to,
         check: check,
-        representation: representation
+        representation: representation,
+        chessPiece: chessPiece,
+        enPassant: enPassant
     });
 }
 
+function getLastMove(){
+
+    if(chessHistory.length === 0)
+        return undefined;
+    return chessHistory[chessHistory.length - 1];
+
+}
+
+function getShotPieceName(piece){
+    switch (piece){
+        case 'queen':
+            return 'Q';
+        case 'horse-left':
+        case 'horse-right':
+            return 'N';
+        case 'king':
+            return 'K';
+        case 'rook':
+            return 'R';
+        case 'bishop':
+            return 'B'
+        default:
+            return  '';
+    }
+}
+
 function showHistory(){
+
+    let history = document.querySelector('#history');
+
     if(chessHistory.length === 0){
+        history.innerHTML = "";
         return;
     }
-    let history = document.querySelector('.right-block');
 
-    let innerHTML = '<p class="history h5">History:</p>';
+
+    if(toHideHistory) {
+        history.style.visibility = "hidden";
+        return;
+    } else
+        history.style.visibility = "visible";
+
+    let innerHTML = '';
 
     let stepNumber = Math.ceil(chessHistory.length / 2);
 
-    innerHTML += '<p><strong>' + stepNumber + '</strong>';
+    let whiteStep = '';
+    let blackStep = '';
+
+    innerHTML += '<p><strong>' + stepNumber + '. </strong>';
     for(let i = chessHistory.length-1; i>=0; i--){
 
-        let stepNumberNext = Math.ceil(i / 2);
+        let stepNumberNext = Math.ceil((i + 1)/ 2);
+
         if(stepNumber !== stepNumberNext){
-            innerHTML += '</p><p><strong>' + stepNumberNext + '</strong>';
+            innerHTML += whiteStep;
+            innerHTML += blackStep;
+            whiteStep = '';
+            blackStep = '';
+            innerHTML += '</p><p><strong>' + stepNumberNext + '. </strong>';
             stepNumber = stepNumberNext;
         }
-        innerHTML += chessHistory[i].representation + ' ';
+        if(chessHistory[i].player === 'black')
+            blackStep = chessHistory[i].representation + '';
+        else if (chessHistory[i].player === 'white')
+            whiteStep = chessHistory[i].representation + ' ';
     }
-    innerHTML +='</p>';
+    innerHTML += whiteStep + blackStep + '</p>';
     history.innerHTML = innerHTML;
+}
+
+function getRandomString(length){
+    let abc = "#abcdefghilkmnopqrstuvwxyzABCDEFGHIJKLMNOPRSTUVWXYZ";
+    let result = '';
+    while (result.length < length) {
+        result += abc[Math.floor(Math.random() * abc.length)];
+    }
+    return result;
+}
+
+function saveHistory(){
+    let guid = getRandomString(16);
+    const url = document.location.pathname + "?game=" + guid;
+    window.history.replaceState(null, null, url);
+}
+
+function soundClick() {
+    let audio = new Audio();
+    audio.src = 'sounds/move.mp3';
+    audio.play().then();
+}
+
+function getOpposite(player){
+
+    if(player === 'white')
+        return 'black';
+    else if (player === 'black')
+        return  'white';
+    else
+        return '';
 }
