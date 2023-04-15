@@ -1,4 +1,4 @@
-function drawBoard(){
+function drawBoard(functionClick){
 
     let chessboard = document.querySelector('#chessboard');
     chessboard.innerHTML = '';
@@ -56,9 +56,7 @@ function drawBoard(){
             divSquare.setAttribute("data-x", '' + x);
             divSquare.setAttribute("data-y", '' + (sizeY - y + 1));
 
-            divSquare.addEventListener('click', function (){
-                showSteps.call(this);
-            });
+            divSquare.onclick = functionClick;
 
             divLine.append(divSquare);
         }
@@ -110,27 +108,8 @@ function iniStandard(){
     setPiece("white", "horse-right", 7, 1);
     setPiece("white", "rook", 8, 1);
 
-    chessState.castlingDone = {
-        white: {
-            done: false,
-                leftRookMoved: false,
-                rightRookMoved: false,
-                kingMoved: false
-        },
-        black: {
-            done: false,
-                leftRookMoved: false,
-                rightRookMoved: false,
-                kingMoved: false
-        },
-    }
-    chessState.winner = '';
-    chessState.finished = false;
-    chessHistory = [];
-    setTurnToMove('white');
-    updateStatusBar();
-    showHistory();
-    saveHistory();
+    hideSelectPawnMenu();
+    startGame('white', 'iniStandard');
 }
 
 function setPiece(player, piece, x, y){
@@ -178,7 +157,7 @@ function showNewGameOptions(){
     newButtonThisPC.textContent = "THIS DEVICE";
     newButtonThisPC.classList.add('col-4', 'rounded');
     newButtonThisPC.addEventListener('click', ()=>{
-        drawBoard();
+        drawBoard(showSteps);
         iniStandard();
     });
 
@@ -186,7 +165,7 @@ function showNewGameOptions(){
     newButtonRemote.textContent = "REMOTE GAME";
     newButtonRemote.classList.add('col-4', 'rounded');
     newButtonRemote.addEventListener('click', ()=>{
-        drawBoard();
+        drawBoard(showSteps);
         iniStandard();
     });
 
@@ -697,28 +676,37 @@ function getPossibleMovesKing(cell, boardState, itsCheckCheck = false){
         checkAndAddStep(steps, x, y, probableMoves[i].x, probableMoves[i].y, player, boardState, itsCheckCheck);
     }
 
+    if(!itsCheckCheck){
 
-    if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].leftRookMoved && !chessState.castlingDone[player].kingMoved
-        && checkFreeSpace(2, y, boardState) && checkFreeSpace(3, y, boardState) && checkFreeSpace(4, y, boardState)){
+        if(chessState.turnToMove === 'black' && y !==8)
+            return steps;
+        if(chessState.turnToMove === 'white' && y !==1)
+            return steps;
 
-        let opposite = getOpposite(player);
-        let allPossibleMoves = getAllPossibleMoves(opposite, undefined, true);
-        let filterPossibleMoves = allPossibleMoves.filter(item=>{
-            return (item.x >= 3 && item.x<=5) && item.y===y
-        });
-        if(filterPossibleMoves.length === 0)
-            checkAndAddStep(steps, x, y,3 ,y, player, boardState, itsCheckCheck);
+
+        if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].leftRookMoved && !chessState.castlingDone[player].kingMoved
+            && checkFreeSpace(2, y, boardState) && checkFreeSpace(3, y, boardState) && checkFreeSpace(4, y, boardState)
+            && chessState.positions[0][y-1].chessPiece==='rook'){
+
+            let opposite = getOpposite(player);
+            let allPossibleMoves = getAllPossibleMoves(opposite, undefined, true);
+            let filterPossibleMoves = allPossibleMoves.filter(item=>{
+                return (item.x >= 3 && item.x<=5) && item.y===y
+            });
+            if(filterPossibleMoves.length === 0)
+                checkAndAddStep(steps, x, y,3 ,y, player, boardState, itsCheckCheck);
+        }
+        if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].rightRookMoved && !chessState.castlingDone[player].kingMoved
+            && checkFreeSpace(6, y, boardState) && checkFreeSpace(7, y, boardState)
+            && chessState.positions[7][y-1].chessPiece==='rook'){
+
+            let opposite = getOpposite(player);
+            let allPossibleMoves = getAllPossibleMoves(opposite, undefined, true);
+            let filterPossibleMoves = allPossibleMoves.filter(item => item.x >= 5 && item.x<=7 && item.y===y);
+            if(filterPossibleMoves.length === 0)
+                checkAndAddStep(steps,x, y,7 ,y, player, boardState, itsCheckCheck);
+        }
     }
-    if(!chessState.castlingDone[player].done && !chessState.castlingDone[player].rightRookMoved && !chessState.castlingDone[player].kingMoved
-        && checkFreeSpace(6, y, boardState) && checkFreeSpace(7, y, boardState)){
-
-        let opposite = getOpposite(player);
-        let allPossibleMoves = getAllPossibleMoves(opposite, undefined, true);
-        let filterPossibleMoves = allPossibleMoves.filter(item => item.x >= 5 && item.x<=7 && item.y===y);
-        if(filterPossibleMoves.length === 0)
-            checkAndAddStep(steps,x, y,7 ,y, player, boardState, itsCheckCheck);
-    }
-
     return steps;
 }
 
@@ -891,7 +879,9 @@ function getCell(x,y){
 function updateStatusBar() {
 
     let statusBar = document.querySelector('#status-bar');
-    if(chessState.finished && chessState.winner !== 'pat')
+    if(chessState.status === 'arrange')
+        statusBar.innerHTML = 'Please, select piece and click on the chessboard';
+    else if(chessState.finished && chessState.winner !== 'pat')
         statusBar.innerHTML = 'Check and mate! <span class="text-capitalize">' + chessState.winner +'</span> wins!';
     else if (chessState.finished && chessState.winner === 'pat')
         statusBar.innerHTML = 'Draw! Pat!';
@@ -949,6 +939,8 @@ function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLon
         chessPiece: chessPiece,
         enPassant: enPassant
     });
+
+    saveHistory();
 }
 
 function getLastMove(){
@@ -986,12 +978,15 @@ function showHistory(){
         return;
     }
 
-
     if(toHideHistory) {
         history.style.visibility = "hidden";
+        history.style.display = 'none';
         return;
-    } else
+    } else{
         history.style.visibility = "visible";
+        history.style.display = 'flex';
+    }
+
 
     let innerHTML = '';
 
@@ -1023,7 +1018,7 @@ function showHistory(){
 }
 
 function getRandomString(length){
-    let abc = "#abcdefghilkmnopqrstuvwxyzABCDEFGHIJKLMNOPRSTUVWXYZ";
+    let abc = "abcdefghilkmnopqrstuvwxyzABCDEFGHIJKLMNOPRSTUVWXYZ";
     let result = '';
     while (result.length < length) {
         result += abc[Math.floor(Math.random() * abc.length)];
@@ -1031,10 +1026,43 @@ function getRandomString(length){
     return result;
 }
 
-function saveHistory(){
+function createGameHistory(initialLocation){
+
     let guid = getRandomString(16);
     const url = document.location.pathname + "?game=" + guid;
     window.history.replaceState(null, null, url);
+
+    chessState.initialLocation = initialLocation;
+
+}
+
+function saveHistory(){
+
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+
+    if(getParams.has('game')){
+
+        let gameId = getParams.get('game');
+        if(gameId.length !== 16)
+            return;
+        let shotHistory = chessHistory.map(item=> {
+            return [
+                ""+item.from.x+item.from.y+item.to.x+item.to.y,
+                item.representation
+            ]
+        });
+        let time = new Date().getTime();
+        let startTime = chessState.startTime;
+        let startPositions = chessState.initialLocation;
+
+        localStorage.setItem('game_' + gameId, JSON.stringify({
+            time: time,
+            startTime: startTime,
+            startPosition: startPositions,
+            history: shotHistory
+        }));
+    }
 }
 
 function soundClick() {
@@ -1051,4 +1079,155 @@ function getOpposite(player){
         return  'white';
     else
         return '';
+}
+
+function arrange(){
+
+    chessState.status = 'arrange';
+
+    let leftBoard = document.querySelector('.left-block');
+    leftBoard.innerHTML = '';
+
+    let divSelect = document.createElement('div');
+    divSelect.classList.add('arrange-board');
+
+    leftBoard.append(divSelect);
+
+    let divBoard = document.createElement('div');
+    divBoard.classList.add('arrange-board');
+    leftBoard.append(divBoard);
+
+    let allFigures = [
+        ['white', 'bishop'],
+        ['white', 'horse-left'],
+        ['white', 'king'],
+        ['white', 'pawn'],
+        ['white', 'queen'],
+        ['white', 'rook'],
+
+        ['black', 'bishop'],
+        ['black', 'horse-left'],
+        ['black', 'king'],
+        ['black', 'pawn'],
+        ['black', 'queen'],
+        ['black', 'rook'],
+
+        ['noOne', 'trash']
+
+    ];
+
+    for (let x = 0; x < 13; x++) {
+        let divSquare = document.createElement('div');
+        divSquare.classList.add('arrange-square', 'square');
+        divSquare.setAttribute('data-player', allFigures[x][0]);
+        divSquare.setAttribute('data-piece', allFigures[x][1]);
+
+        divSquare.innerHTML = "<img src='images/pieces/" + allFigures[x][0] + '/' + allFigures[x][1] + ".png' alt='"
+            + allFigures[x][1] + "' class='img-pieces'>";
+        divSquare.onclick = arrangeSelect;
+
+        divBoard.append(divSquare);
+
+    }
+
+    let divButtons = document.querySelector('#downButtons');
+    divButtons.innerHTML = '';
+
+    let elSelect = document.createElement('select');
+    elSelect.setAttribute('id', 'selectMove');
+
+    let optionWhites = document.createElement('option');
+    optionWhites.dataset.player = 'white';
+    optionWhites.textContent = "White's move";
+
+    let optionBlacks = document.createElement('option');
+    optionBlacks.dataset.player = 'black';
+    optionBlacks.textContent = "Black's move";
+
+    elSelect.append(optionWhites);
+    elSelect.append(optionBlacks);
+    elSelect.classList.add('form-select-sm', 'form-check-inline');
+    divButtons.append(elSelect);
+
+    let startButton = document.createElement('button');
+    startButton.innerText = 'Start';
+    startButton.onclick = startArranges;
+    startButton.classList.add('btn-success');
+    divButtons.append(startButton);
+
+    toHideHistory = true;
+    updateStatusBar();
+    drawBoard(arrangeBoardSelect);
+}
+
+function arrangeSelect(){
+
+    let selectedArrange = document.getElementsByClassName('selected');
+
+    for (let i = selectedArrange.length - 1; i >= 0 ; i--){
+        selectedArrange[i].style.removeProperty('background-color');
+        selectedArrange[i].classList.remove('selected');
+    }
+
+    this.classList.add('selected');
+}
+
+function arrangeBoardSelect(){
+    let selectedArrange = document.getElementsByClassName('selected');
+
+    if(selectedArrange.length > 0){
+        let arrangeDiv = selectedArrange[0];
+        let piece = arrangeDiv.dataset.piece;
+        let player = arrangeDiv.dataset.player;
+        let x = this.dataset.x;
+        let y = this.dataset.y;
+        if(piece !== 'trash')
+            setPiece(player, piece, x, y);
+        else
+            setPiece('', '', x, y);
+    }
+}
+
+function startArranges(){
+
+    let squares = document.getElementsByClassName('square');
+    for(let i = 0; i<squares.length; i++){
+        squares[i].onclick = showSteps;
+    }
+
+    let playerOptions = document.querySelector('#selectMove')
+    let selected = playerOptions.selectedOptions[0];
+
+    let divButtons = document.querySelector('#downButtons');
+    divButtons.innerHTML = '';
+
+    hideSelectPawnMenu();
+    startGame(selected.dataset.player, JSON.stringify(chessState.positions));
+}
+
+function startGame(player, startPositions){
+    chessState.castlingDone = {
+        white: {
+            done: false,
+            leftRookMoved: false,
+            rightRookMoved: false,
+            kingMoved: false
+        },
+        black: {
+            done: false,
+            leftRookMoved: false,
+            rightRookMoved: false,
+            kingMoved: false
+        },
+    }
+    chessState.winner = '';
+    chessState.finished = false;
+    chessState.startTime = new Date().getTime();
+    chessState.status = 'game';
+    chessHistory = [];
+
+    setTurnToMove(player);
+    updateStatusBar();
+    showHistory();
+    createGameHistory(startPositions);
 }

@@ -79,6 +79,18 @@ header{
     padding-bottom: 10px;
 }
 
+
+.arrange-board{
+    /*border: black 1px solid;*/
+    /*margin-left: 14px;*/
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.arrange-square{
+    border: 1px solid black;
+}
+
 .right-block{
     width: 160px;
     display: block;
@@ -124,8 +136,15 @@ header{
     background: red;
 }
 
-.history{
+#history{
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+}
 
+#downButtons{
+    flex-wrap: wrap;
+    display: flex;
 }
 
 /* Мобильные устройства (портретная ориентация) */

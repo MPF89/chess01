@@ -22,7 +22,8 @@ const chessState = {
         },
     },
     winner: '',
-    finished: false
+    finished: false,
+    initialLocation: ''
 }
 
 let chessHistory = [];
@@ -30,9 +31,11 @@ let toHideHistory = false;
 
 const sizeX = 8;
 const sizeY = 8;
-drawBoard();
+drawBoard(showSteps);
 
 document.querySelector("#button-start").addEventListener("click", showNewGameOptions);
+document.querySelector('#button-arrange').addEventListener('click', arrange)
+
 document.querySelector('#button-hide').onclick = function(){
 
     toHideHistory = !toHideHistory;
