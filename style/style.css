@@ -174,6 +174,10 @@ header{
         height: 50px;
     }
 
+    .left-block{
+        width: 410px;
+    }
+
     .left-line {
         width: 10px;
         height: 37px;
@@ -264,6 +268,10 @@ header{
         height: 10px;
     }
 
+    .left-block{
+        width: 490px;
+    }
+
     .right-block{
         margin-top: 20px;
     }
@@ -319,6 +327,10 @@ header{
         flex-wrap: wrap;
         width: 100%;
         height: 65px;
+    }
+
+    .left-block{
+        width: 540px;
     }
 
     .left-line {

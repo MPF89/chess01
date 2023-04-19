@@ -52,3 +52,4 @@ document.querySelector('#button-hide').onclick = function(){
     }
 }
 
+loadGame();

@@ -2,20 +2,7 @@ function drawBoard(functionClick){
 
     let chessboard = document.querySelector('#chessboard');
     chessboard.innerHTML = '';
-    chessState.positions = [...Array(8)].map(() => Array(8).fill({
-
-    }));
-
-    for(let x = 0; x < sizeX; x++){
-        for (let y = 0; y<sizeY; y++){
-            chessState.positions[x][y] = {
-                player: '',
-                chessPiece: '',
-                x: x + 1,
-                y: y + 1
-            };
-        }
-    }
+    chessState.positions = getStandardPositions();
 
     for(let y = 1; y <= sizeY; y++){
 
@@ -83,7 +70,7 @@ function drawBoard(functionClick){
     chessboard.append(divLine);
 }
 
-function iniStandard(){
+function iniStandard(itsLoading = false){
 
     setPiece("black", 'rook', 1, 8);
     setPiece("black", 'horse-left', 2, 8);
@@ -109,7 +96,7 @@ function iniStandard(){
     setPiece("white", "rook", 8, 1);
 
     hideSelectPawnMenu();
-    startGame('white', 'iniStandard');
+    startGame('white', 'iniStandard', itsLoading);
 }
 
 function setPiece(player, piece, x, y){
@@ -882,7 +869,7 @@ function updateStatusBar() {
     if(chessState.status === 'arrange')
         statusBar.innerHTML = 'Please, select piece and click on the chessboard';
     else if(chessState.finished && chessState.winner !== 'pat')
-        statusBar.innerHTML = 'Check and mate! <span class="text-capitalize">' + chessState.winner +'</span> wins!';
+        statusBar.innerHTML = 'Check and mate! <span class="text-capitalize">' + chessState.winner +'\'s</span> victory!';
     else if (chessState.finished && chessState.winner === 'pat')
         statusBar.innerHTML = 'Draw! Pat!';
     else if (chessState.turnToMove === '') {
@@ -1098,19 +1085,19 @@ function arrange(){
     leftBoard.append(divBoard);
 
     let allFigures = [
-        ['white', 'bishop'],
+        ['white', 'rook'],
         ['white', 'horse-left'],
+        ['white', 'bishop'],
+        ['white', 'queen'],
         ['white', 'king'],
         ['white', 'pawn'],
-        ['white', 'queen'],
-        ['white', 'rook'],
 
-        ['black', 'bishop'],
+        ['black', 'rook'],
         ['black', 'horse-left'],
+        ['black', 'bishop'],
+        ['black', 'queen'],
         ['black', 'king'],
         ['black', 'pawn'],
-        ['black', 'queen'],
-        ['black', 'rook'],
 
         ['noOne', 'trash']
 
@@ -1155,8 +1142,10 @@ function arrange(){
     startButton.classList.add('btn-success');
     divButtons.append(startButton);
 
-    toHideHistory = true;
     updateStatusBar();
+
+    chessHistory = [];
+    showHistory();
     drawBoard(arrangeBoardSelect);
 }
 
@@ -1198,14 +1187,11 @@ function startArranges(){
     let playerOptions = document.querySelector('#selectMove')
     let selected = playerOptions.selectedOptions[0];
 
-    let divButtons = document.querySelector('#downButtons');
-    divButtons.innerHTML = '';
-
     hideSelectPawnMenu();
     startGame(selected.dataset.player, JSON.stringify(chessState.positions));
 }
 
-function startGame(player, startPositions){
+function startGame(player, startPositions, loading = false){
     chessState.castlingDone = {
         white: {
             done: false,
@@ -1226,8 +1212,105 @@ function startGame(player, startPositions){
     chessState.status = 'game';
     chessHistory = [];
 
+    let divButtons = document.querySelector('#downButtons');
+    divButtons.innerHTML = '';
+
     setTurnToMove(player);
     updateStatusBar();
     showHistory();
-    createGameHistory(startPositions);
+    if(!loading)
+        createGameHistory(startPositions);
+
+    saveHistory();
+}
+
+function loadGame(){
+
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+
+    if(getParams.has('game')){
+        let gameId = getParams.get('game');
+
+        if(gameId.length !== 16)
+            return;
+
+        let dataJSON = localStorage.getItem('game_' + gameId);
+        if(dataJSON === null)
+            return;
+
+        try{
+            data = JSON.parse(dataJSON);
+            chessState.positions = getStandardPositions();
+
+            drawBoard(showSteps);
+            if (data.startPosition === 'iniStandard') {
+                iniStandard(true);
+            } else {
+                let startPositions = JSON.parse(data.startPosition);
+                for (let x = 0; x < 8; x++) {
+                    for (let y = 0; y < 8; y++) {
+                        setPiece(
+                            startPositions[x][y].player,
+                            startPositions[x][y].chessPiece,
+                            startPositions[x][y].x,
+                            startPositions[x][y].y);
+                    }
+                }
+            }
+
+            chessState.initialLocation = 'iniStandard';
+
+            chessHistory = [];
+            for (let i = 0; i < data.history.length; i++) {
+
+                let player;
+
+                if (i % 2 === 0)
+                    player = 'white';
+                else
+                    player = 'black';
+
+                let xFrom = data.history[i][0][0];
+                let yFrom = data.history[i][0][1];
+
+                let xTo = data.history[i][0][2];
+                let yTo = data.history[i][0][3];
+
+                let piece = chessState.positions[xFrom - 1][yFrom - 1].chessPiece;
+
+                addHistory(player, {x: xFrom, y: yFrom}, {x: xTo, y: yTo}, piece, false, false, false,
+                    false, false, false, false)
+
+                setPiece('', '', xFrom, yFrom);
+                setPiece(player, piece, xTo, yTo);
+
+                setTurnToMove(getOpposite(player));
+
+            }
+            saveHistory();
+        }
+        catch (error){
+            console.log(error);
+        }
+
+    }
+}
+
+function getStandardPositions(){
+
+    let positions = [...Array(8)].map(() => Array(8).fill({}));
+
+    for(let x = 0; x < sizeX; x++){
+        for (let y = 0; y<sizeY; y++){
+            positions[x][y] = {
+                player: '',
+                chessPiece: '',
+                x: x + 1,
+                y: y + 1
+            };
+        }
+    }
+
+    return positions;
 }
