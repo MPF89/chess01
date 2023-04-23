@@ -25,6 +25,7 @@ const chessState = {
     finished: false,
     initialLocation: ''
 }
+const historyLimit = 50;
 
 let chessHistory = [];
 let toHideHistory = false;
@@ -34,22 +35,9 @@ const sizeY = 8;
 drawBoard(showSteps);
 
 document.querySelector("#button-start").addEventListener("click", showNewGameOptions);
-document.querySelector('#button-arrange').addEventListener('click', arrange)
+document.querySelector('#button-arrange').addEventListener('click', arrange);
+document.querySelector('#button-load').addEventListener('click', showHistoryList);
 
-document.querySelector('#button-hide').onclick = function(){
-
-    toHideHistory = !toHideHistory;
-
-    let history = document.querySelector('#history');
-    if(toHideHistory){
-        this.textContent = 'show';
-        history.style.visibility = "hidden";
-    }
-    else{
-        this.textContent = 'hide';
-        history.style.visibility = "visible";
-        showHistory();
-    }
-}
+document.querySelector('#button-hide').onclick = hideShowHistory;
 
 loadGame();

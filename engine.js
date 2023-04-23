@@ -1,8 +1,9 @@
 function drawBoard(functionClick){
 
     let chessboard = document.querySelector('#chessboard');
+    chessboard.classList.add('chessboard');
     chessboard.innerHTML = '';
-    chessState.positions = getStandardPositions();
+    chessState.positions = getClearPositions();
 
     for(let y = 1; y <= sizeY; y++){
 
@@ -70,7 +71,7 @@ function drawBoard(functionClick){
     chessboard.append(divLine);
 }
 
-function iniStandard(itsLoading = false){
+function iniStandard(itsLoading = false, itsEdit = false){
 
     setPiece("black", 'rook', 1, 8);
     setPiece("black", 'horse-left', 2, 8);
@@ -95,8 +96,10 @@ function iniStandard(itsLoading = false){
     setPiece("white", "horse-right", 7, 1);
     setPiece("white", "rook", 8, 1);
 
-    hideSelectPawnMenu();
-    startGame('white', 'iniStandard', itsLoading);
+    if(!itsEdit){
+        hideSelectPawnMenu();
+        startGame('white', 'iniStandard', itsLoading);
+    }
 }
 
 function setPiece(player, piece, x, y){
@@ -128,7 +131,14 @@ function setTurnToMove(turn){
 function showNewGameOptions(){
 
     let chessboard = document.querySelector('#chessboard');
+    chessboard.classList.add('chessboard');
     chessboard.innerHTML = '';
+
+    let leftBoard = document.querySelector('#left-block');
+    leftBoard.innerHTML = '';
+
+    let buttonsDiv = document.querySelector('#downButtons');
+    buttonsDiv.innerHTML = '';
 
     let divButton = document.createElement('div');
     divButton.classList.add('text-center', 'shadow-lg', 'dropdown-header', 'my-2', 'mx-auto');
@@ -863,99 +873,6 @@ function getCell(x,y){
     return document.querySelector(`div[data-x='${x}'][data-y='${y}']`)
 }
 
-function updateStatusBar() {
-
-    let statusBar = document.querySelector('#status-bar');
-    if(chessState.status === 'arrange')
-        statusBar.innerHTML = 'Please, select piece and click on the chessboard';
-    else if(chessState.finished && chessState.winner !== 'pat')
-        statusBar.innerHTML = 'Check and mate! <span class="text-capitalize">' + chessState.winner +'\'s</span> victory!';
-    else if (chessState.finished && chessState.winner === 'pat')
-        statusBar.innerHTML = 'Draw! Pat!';
-    else if (chessState.turnToMove === '') {
-        statusBar.innerHTML = "&uarr; For start press <span class=\"text-success\">new game</span> &uarr;";
-    } else {
-        let statusBarText = `${chessState.turnToMove}'s move`;
-        statusBar.innerHTML = statusBarText[0].toUpperCase() + statusBarText.slice(1);
-    }
-}
-
-function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLongCastling,
-                    isCheckAndMate, isPat, isCapture, enPassant = false, transformation = '') {
-
-    if(player === 'black' && chessHistory.length === 0){
-        addHistory('white', {x:-1, y: -1}, {x:-1, y:-1}, '', false, false)
-    }
-
-    let separator = '-';
-    if(isCapture)
-        separator = 'x';
-
-    let representation;
-    if(from.x === -1){
-        representation = '...';
-    }
-    else if (itsShotCastling)
-        representation = '0-0';
-    else if (itsLongCastling)
-        representation = '0-0-0';
-    else {
-        let abc = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        let pieceName = getShotPieceName(chessPiece);
-        representation = `${pieceName}${abc[from.x-1]}${from.y}${separator}${abc[to.x-1]}${to.y}`;
-    }
-    if(check)
-        representation += '+';
-
-    if(isCheckAndMate)
-        representation += '#';
-
-    if(isPat)
-        representation += '=';
-
-    if(enPassant)
-        representation += ' e.p.';
-    representation += transformation;
-
-        chessHistory.push({
-        player: player,
-        from: from,
-        to: to,
-        check: check,
-        representation: representation,
-        chessPiece: chessPiece,
-        enPassant: enPassant
-    });
-
-    saveHistory();
-}
-
-function getLastMove(){
-
-    if(chessHistory.length === 0)
-        return undefined;
-    return chessHistory[chessHistory.length - 1];
-
-}
-
-function getShotPieceName(piece){
-    switch (piece){
-        case 'queen':
-            return 'Q';
-        case 'horse-left':
-        case 'horse-right':
-            return 'N';
-        case 'king':
-            return 'K';
-        case 'rook':
-            return 'R';
-        case 'bishop':
-            return 'B'
-        default:
-            return  '';
-    }
-}
-
 function showHistory(){
 
     let history = document.querySelector('#history');
@@ -973,7 +890,6 @@ function showHistory(){
         history.style.visibility = "visible";
         history.style.display = 'flex';
     }
-
 
     let innerHTML = '';
 
@@ -996,21 +912,39 @@ function showHistory(){
             stepNumber = stepNumberNext;
         }
         if(chessHistory[i].player === 'black')
-            blackStep = chessHistory[i].representation + '';
+            blackStep = '<a class="move-number" data-moveNumber="'+ i + '"><span data-moveNumber="'+ i + '">'+ chessHistory[i].representation + ' </span></a>';
         else if (chessHistory[i].player === 'white')
-            whiteStep = chessHistory[i].representation + ' ';
+            whiteStep = '<a class="move-number" data-moveNumber="'+ i + '"><span data-moveNumber="'+ i + '">'+ chessHistory[i].representation + ' </span></a>';
     }
     innerHTML += whiteStep + blackStep + '</p>';
     history.innerHTML = innerHTML;
+
+    if(chessState.status !== 'arrange'){
+        let pButtonHistory = document.querySelector('#button-history');
+        pButtonHistory.innerHTML = '<p class="history h5" id="button-history">History: (<a href="#" id="button-hide">hide</a>) </p>';
+        document.querySelector('#button-hide').onclick = hideShowHistory;
+    }
+    else{
+        let pButtonHistory = document.querySelector('#button-history');
+        pButtonHistory.innerHTML = '<p class="history h5" id="button-history">History:</p>';
+    }
 }
 
-function getRandomString(length){
-    let abc = "abcdefghilkmnopqrstuvwxyzABCDEFGHIJKLMNOPRSTUVWXYZ";
-    let result = '';
-    while (result.length < length) {
-        result += abc[Math.floor(Math.random() * abc.length)];
+function hideShowHistory(){
+
+    toHideHistory = !toHideHistory;
+
+    let history = document.querySelector('#history');
+    if(toHideHistory){
+        this.textContent = 'show';
+        history.style.visibility = "hidden";
+        showHistory();
     }
-    return result;
+    else{
+        this.textContent = 'hide';
+        history.style.visibility = "visible";
+        showHistory();
+    }
 }
 
 function createGameHistory(initialLocation){
@@ -1024,6 +958,30 @@ function createGameHistory(initialLocation){
 }
 
 function saveHistory(){
+
+    //clear old history:
+    let games;
+    if(localStorage.hasOwnProperty('games_id')){
+        try{
+            games = JSON.parse(localStorage.getItem('games_id'));
+            if(games.length>historyLimit){
+                games.sort(gamesSort);
+                while(games.length > historyLimit){
+                    let deleted = games.pop();
+                    localStorage.removeItem('game_' + deleted.id);
+                }
+            }
+        }
+        catch (error){
+            console.error(error);
+            games = [];
+            localStorage.setItem('games_id', JSON.stringify([]));
+        }
+    }
+    else{
+        games = [];
+        localStorage.setItem('games_id', JSON.stringify([]));
+    }
 
     let paramsString = document.location.search;
     let getParams = new URLSearchParams(paramsString);
@@ -1049,13 +1007,22 @@ function saveHistory(){
             startPosition: startPositions,
             history: shotHistory
         }));
-    }
-}
 
-function soundClick() {
-    let audio = new Audio();
-    audio.src = 'sounds/move.mp3';
-    audio.play().then();
+        let gameFounded = false;
+        for(let i=0; i<games.length; i++){
+            if(games[i].id === gameId){
+                gameFounded = true;
+                games[i].time = time;
+            }
+        }
+        if(!gameFounded){
+            games.push({id: gameId, time: time})
+        }
+    }
+    let now = new Date();
+    localStorage.setItem('games_id', JSON.stringify(games));
+
+    updateStatusSave("Saved local " +now.toString()) ;
 }
 
 function getOpposite(player){
@@ -1068,7 +1035,7 @@ function getOpposite(player){
         return '';
 }
 
-function arrange(){
+function arrange(gameData, moveNumber = undefined){
 
     chessState.status = 'arrange';
 
@@ -1114,7 +1081,6 @@ function arrange(){
         divSquare.onclick = arrangeSelect;
 
         divBoard.append(divSquare);
-
     }
 
     let divButtons = document.querySelector('#downButtons');
@@ -1126,10 +1092,12 @@ function arrange(){
     let optionWhites = document.createElement('option');
     optionWhites.dataset.player = 'white';
     optionWhites.textContent = "White's move";
+    optionWhites.id = 'optionWhites';
 
     let optionBlacks = document.createElement('option');
     optionBlacks.dataset.player = 'black';
     optionBlacks.textContent = "Black's move";
+    optionBlacks.id = 'optionBlacks';
 
     elSelect.append(optionWhites);
     elSelect.append(optionBlacks);
@@ -1147,6 +1115,10 @@ function arrange(){
     chessHistory = [];
     showHistory();
     drawBoard(arrangeBoardSelect);
+
+    if(gameData !== undefined){
+        drawPositionsWithHistory(gameData, false, true, moveNumber);
+    }
 }
 
 function arrangeSelect(){
@@ -1241,63 +1213,402 @@ function loadGame(){
 
         try{
             data = JSON.parse(dataJSON);
-            chessState.positions = getStandardPositions();
+            chessState.positions = getClearPositions();
 
             drawBoard(showSteps);
-            if (data.startPosition === 'iniStandard') {
-                iniStandard(true);
-            } else {
-                let startPositions = JSON.parse(data.startPosition);
-                for (let x = 0; x < 8; x++) {
-                    for (let y = 0; y < 8; y++) {
-                        setPiece(
-                            startPositions[x][y].player,
-                            startPositions[x][y].chessPiece,
-                            startPositions[x][y].x,
-                            startPositions[x][y].y);
-                    }
-                }
-            }
-
-            chessState.initialLocation = 'iniStandard';
-
-            chessHistory = [];
-            for (let i = 0; i < data.history.length; i++) {
-
-                let player;
-
-                if (i % 2 === 0)
-                    player = 'white';
-                else
-                    player = 'black';
-
-                let xFrom = data.history[i][0][0];
-                let yFrom = data.history[i][0][1];
-
-                let xTo = data.history[i][0][2];
-                let yTo = data.history[i][0][3];
-
-                let piece = chessState.positions[xFrom - 1][yFrom - 1].chessPiece;
-
-                addHistory(player, {x: xFrom, y: yFrom}, {x: xTo, y: yTo}, piece, false, false, false,
-                    false, false, false, false)
-
-                setPiece('', '', xFrom, yFrom);
-                setPiece(player, piece, xTo, yTo);
-
-                setTurnToMove(getOpposite(player));
-
-            }
+            drawPositionsWithHistory(data, false, true);
             saveHistory();
         }
         catch (error){
             console.log(error);
         }
+    updateStatusBar();
+    }
 
+}
+
+function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
+
+    if (data.startPosition === 'iniStandard') {
+        iniStandard(itsLoading, itsEdit);
+        chessState.initialLocation = 'iniStandard';
+    } else {
+        let startPositions = JSON.parse(data.startPosition);
+        for (let x = 0; x < 8; x++) {
+            for (let y = 0; y < 8; y++) {
+                setPiece(
+                    startPositions[x][y].player,
+                    startPositions[x][y].chessPiece,
+                    startPositions[x][y].x,
+                    startPositions[x][y].y);
+            }
+        }
+        chessState.initialLocation = JSON.stringify(chessState.positions);
+    }
+
+    chessHistory = [];
+    let limit = data.history.length;
+    if(moveNumber !== undefined)
+        limit = moveNumber;
+
+    let selectMove = document.querySelector('#selectMove');
+    if(limit % 2 === 0 && selectMove!==null)
+        selectMove.selectedIndex = 1;
+    else if(selectMove !== null)
+        selectMove.selectedIndex = 0;
+
+    for (let i = 0; i < data.history.length; i++) {
+
+        let player;
+
+        if (i % 2 === 0)
+            player = 'white';
+        else
+            player = 'black';
+        let description = data.history[i][1];
+
+        if(description === '...'){
+            continue;
+        }
+
+        let xFrom = +data.history[i][0][0];
+        let yFrom = +data.history[i][0][1];
+
+        let xTo = +data.history[i][0][2];
+        let yTo = +data.history[i][0][3];
+
+        let piece = chessState.positions[xFrom - 1][yFrom - 1].chessPiece;
+
+        let isCheck = description.indexOf('+') !== -1;
+        let isCheckAndMate = description.indexOf('#') !== -1;
+        let isPat = description.indexOf('=') !== -1;
+        let isCapture = description.indexOf('x') !== -1;
+        let isLongCastle = description === '0-0-0';
+        let isShotCastle = description === '0-0';
+        let isEnPassant = description.indexOf('e.p.') !==-1;
+
+        let transformation = '';
+
+        if(!isLongCastle && !isShotCastle &&!isEnPassant && description.length > 5 && getShotPieceName(piece) === ''){
+            transformation = description[5];
+        }
+
+        addHistory(player, {x: xFrom, y: yFrom}, {x: xTo, y: yTo}, piece, isCheck, isShotCastle, isLongCastle,
+            isCheckAndMate, isPat, isCapture, isEnPassant, transformation, description)
+        if(i<=limit){
+            setPiece('', '', xFrom, yFrom);
+            setPiece(player, piece, xTo, yTo);
+
+            if(isEnPassant){
+                if(player === 'white'){
+                    setPiece('', '', xTo, yTo - 1);
+                }
+                else if (player === 'black'){
+                    setPiece('', '', xTo, yTo + 1);
+                }
+            }
+
+            if(isLongCastle){
+                setPiece(player, 'rook', 4, yTo);
+                setPiece(player, '', 1, yTo);
+                chessState.castlingDone[player].done = true;
+            }
+            if(isShotCastle){
+                setPiece(player, 'rook', 6, yTo);
+                setPiece(player, '', 8, yTo);
+                chessState.castlingDone[player].done = true;
+            }
+
+            if(transformation !== ''){
+                setPiece(player, getLongPieceName(transformation), xTo, yTo);
+            }
+        }
+        setTurnToMove(getOpposite(player));
     }
 }
 
-function getStandardPositions(){
+function editGame(){
+    try {
+        data = JSON.parse(localStorage.getItem('game_' + this.dataset.gameId));
+        chessState.positions = getClearPositions();
+        toHideHistory = false;
+        arrange(data);
+        showHistory();
+
+        let pMoves = document.querySelectorAll('.move-number');
+        for(let i=0; i<pMoves.length; i++){
+            pMoves[i].classList.add('selected-moves');
+            pMoves[i].onclick = goToMove;
+        }
+
+        function goToMove(event){
+            chessState.positions = getClearPositions();
+            arrange(data, event.target.dataset.movenumber);
+            showHistory();
+
+            let selected = document.querySelector('.move-now');
+            if(selected !== null)
+                selected.classList.remove('.move-now');
+
+            let movesNumber = document.querySelector('a[data-movenumber="'+event.target.dataset.movenumber +'"]');
+            if(movesNumber!== null)
+                movesNumber.classList.add('move-now');
+
+            let movesNumberSpan = document.querySelector('span[data-movenumber="'+event.target.dataset.movenumber +'"]');
+            if(movesNumberSpan!== null)
+                movesNumberSpan.classList.add('move-now');
+
+            let pMoves = document.querySelectorAll('.move-number');
+            for(let i=0; i<pMoves.length; i++){
+                pMoves[i].classList.add('selected-moves');
+                pMoves[i].onclick = goToMove;
+            }
+        }
+    }
+    catch (error){
+        console.error(error);
+    }
+}
+
+function showHistoryList(){
+
+    let chessboard = document.querySelector('#chessboard');
+    chessboard.innerHTML = '';
+
+    let divButtons = document.querySelector('#downButtons');
+    divButtons.innerHTML = '';
+
+    let leftBoard = document.querySelector('.left-block');
+    leftBoard.innerHTML = '';
+
+    let divSelect = document.createElement('div');
+    divSelect.classList.add('arrange-board');
+
+    chessState.status = 'loading';
+
+    if(localStorage.hasOwnProperty('games_id')){
+        let games = JSON.parse(localStorage.getItem('games_id'));
+        try {
+            games.sort(gamesSort);
+            for(let i=0; i<games.length; i++){
+
+                if(!localStorage.hasOwnProperty('game_' + games[i].id)){
+                    continue;
+                }
+                let gameHistory = JSON.parse(localStorage.getItem('game_' + games[i].id));
+
+                let player;
+                if(gameHistory.history.length % 2 === 0)
+                    player = 'white';
+                else
+                    player = 'black';
+
+                let moveNumber = Math.ceil(gameHistory.history.length / 2) + 1;
+
+                let divLoad = document.createElement('div');
+                divLoad.classList.add('card-body');
+
+                let spanTime = document.createElement('span');
+                spanTime.innerHTML = '<strong>' + (i+1) + '. Date: </strong> ';
+
+                let date = new Date(games[i].time);
+                spanTime.innerHTML += date.toDateString() + ' ' + date.toLocaleTimeString() + ' , <strong>' + player +"</strong>'s move. <strong>Move No. </strong>" + moveNumber;
+
+                let imgEdit = document.createElement('img');
+                imgEdit.src = 'images/pieces/noOne/pen.png';
+                imgEdit.alt = 'pen';
+
+                let linkEdit = document.createElement('a');
+                linkEdit.innerText = ' ';
+                linkEdit.append(imgEdit);
+                linkEdit.innerHTML += 'Edit ';
+                linkEdit.href = "#";
+                linkEdit.classList.add('me-md-2', 'text-decoration-none');
+                linkEdit.onclick = editGame;
+                linkEdit.dataset.gameId = games[i].id;
+
+                let imgCopy = document.createElement('img');
+                imgCopy.src = 'images/pieces/noOne/copy.png';
+                imgCopy.alt = 'copy';
+
+                let linkCopy = document.createElement('a');
+                linkCopy.innerText = ' '
+                linkCopy.dataset.gameid = games[i].id;
+                linkCopy.append(imgCopy);
+                linkCopy.innerHTML += 'Copy ';
+                linkCopy.href = "#";
+                linkCopy.onclick = async function (){
+                    try {
+                        await navigator.clipboard.writeText(document.location.pathname + '?game=' + games[i].id);
+                        console.log('Content copied to clipboard');
+                    } catch (err) {
+                        console.error('Failed to copy: ', err);
+                    }
+                }
+
+                let imgContinue = document.createElement('img');
+                imgContinue.src = 'images/pieces/noOne/next-track.png';
+                imgContinue.alt = 'track';
+
+                let link = document.createElement('a');
+                link.append(imgContinue)
+                link.href = document.location.pathname + '?game=' + games[i].id;
+                link.target = '_blank';
+                link.innerHTML +='Continue';
+                link.classList.add('me-md-2', 'text-decoration-none');
+
+                let br = document.createElement('br');
+
+                divLoad.append(spanTime, br, link, linkEdit);
+                chessboard.append(divLoad);
+            }
+        }
+        catch (error){
+            console.error(error);
+        }
+    }
+    else{
+        chessboard.innerHTML = '<p class="fs-2">Saved games not found</p>';
+    }
+
+    updateStatusBar();
+}
+
+function updateStatusBar() {
+
+    let statusBar = document.querySelector('#status-bar');
+
+    if(chessState.status === 'loading')
+        statusBar.innerHTML = 'Please, select game';
+    else if(chessState.status === 'arrange')
+        statusBar.innerHTML = 'Please, select piece and click on the chessboard';
+    else if(chessState.finished && chessState.winner !== 'pat')
+        statusBar.innerHTML = 'Check and mate! <span class="text-capitalize">' + chessState.winner +'\'s</span> victory!';
+    else if (chessState.finished && chessState.winner === 'pat')
+        statusBar.innerHTML = 'Draw! Pat!';
+    else if (chessState.turnToMove === '') {
+        statusBar.innerHTML = "&uarr; For start press <span class=\"text-success\">new game</span> &uarr;";
+    } else {
+        let statusBarText = `${chessState.turnToMove}'s move`;
+        statusBar.innerHTML = statusBarText[0].toUpperCase() + statusBarText.slice(1);
+    }
+}
+
+function updateStatusSave(status){
+    let pSave = document.querySelector('.status-save');
+    pSave.textContent = status;
+}
+
+function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLongCastling,
+                    isCheckAndMate, isPat, isCapture, enPassant = false, transformation = '', description='') {
+
+    if(player === 'black' && chessHistory.length === 0){
+        addHistory('white', {x:-1, y: -1}, {x:-1, y:-1}, '', false, false)
+    }
+
+    let separator = '-';
+    if(isCapture)
+        separator = 'x';
+
+    let representation;
+    if(description === ''){
+        if(from.x === -1){
+            representation = '...';
+        }
+        else if (itsShotCastling)
+            representation = '0-0';
+        else if (itsLongCastling)
+            representation = '0-0-0';
+        else {
+            let abc = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            let pieceName = getShotPieceName(chessPiece);
+            representation = `${pieceName}${abc[from.x-1]}${from.y}${separator}${abc[to.x-1]}${to.y}`;
+        }
+        if(check)
+            representation += '+';
+
+        if(isCheckAndMate)
+            representation += '#';
+
+        if(isPat)
+            representation += '=';
+
+        if(enPassant)
+            representation += ' e.p.';
+        representation += transformation;
+    }
+    else
+        representation = description;
+
+    chessHistory.push({
+        player: player,
+        from: from,
+        to: to,
+        check: check,
+        representation: representation,
+        chessPiece: chessPiece,
+        enPassant: enPassant
+    });
+
+    saveHistory();
+}
+
+function getLastMove(){
+
+    if(chessHistory.length === 0)
+        return undefined;
+    return chessHistory[chessHistory.length - 1];
+
+}
+
+function getShotPieceName(piece){
+    switch (piece){
+        case 'queen':
+            return 'Q';
+        case 'horse-left':
+        case 'horse-right':
+            return 'N';
+        case 'king':
+            return 'K';
+        case 'rook':
+            return 'R';
+        case 'bishop':
+            return 'B'
+        default:
+            return  '';
+    }
+}
+
+function getLongPieceName(piece){
+    switch (piece){
+        case 'Q':
+            return 'queen';
+        case 'N':
+            if(Math.random()>0.5)
+                return 'horse-left';
+            else
+                return 'horse-right';
+        case 'K':
+            return 'king';
+        case 'R':
+            return 'rook';
+        case 'B':
+            return 'bishop'
+        default:
+            return  '';
+    }
+}
+
+function getRandomString(length){
+    let abc = "abcdefghilkmnopqrstuvwxyzABCDEFGHIJKLMNOPRSTUVWXYZ";
+    let result = '';
+    while (result.length < length) {
+        result += abc[Math.floor(Math.random() * abc.length)];
+    }
+    return result;
+}
+
+function getClearPositions(){
 
     let positions = [...Array(8)].map(() => Array(8).fill({}));
 
@@ -1313,4 +1624,16 @@ function getStandardPositions(){
     }
 
     return positions;
+}
+
+function soundClick() {
+    let audio = new Audio();
+    audio.src = 'sounds/move.mp3';
+    audio.play().then();
+}
+
+function gamesSort(a, b){
+    if (a.time > b.time) return -1;
+    else if (a.time === b.time) return 0;
+    else return 1;
 }
