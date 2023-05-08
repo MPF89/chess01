@@ -31,6 +31,7 @@ const historyLimit = 50;
 let chessHistory = [];
 let toHideHistory = false;
 let timerId = null;
+let timeOut = 3000;
 
 const sizeX = 8;
 const sizeY = 8;

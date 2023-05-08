@@ -1083,7 +1083,6 @@ function saveHistoryOnServer(){
                 console.error(data.message);
             }
             else{
-                console.log(data);
                 updateStatusSave("Saved online " + new Date().toString());
             }
         })
@@ -1234,6 +1233,7 @@ function startArranges(){
     let selected = playerOptions.selectedOptions[0];
 
     hideSelectPawnMenu();
+    chessState.single = true;
     startGame(selected.dataset.player, JSON.stringify(chessState.positions));
 }
 
@@ -1269,7 +1269,9 @@ function startGame(player, startPositions, loading = false){
 
     saveHistory();
 
-    setTimeout(checkUpdateGame, 5000);
+    stopTimer();
+    if(!chessState.single)
+        timerId = setTimeout(checkUpdateGame, timeOut);
 }
 
 async function loadGame(){
@@ -1323,7 +1325,9 @@ async function loadGame(){
 
             saveHistory();
             showHistory();
-            setTimeout(checkUpdateGame, 4500);
+
+            stopTimer();
+            timerId = setTimeout(checkUpdateGame, timeOut);
         }
         catch (error){
             console.log(error);
@@ -1370,6 +1374,7 @@ function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
             player = 'white';
         else
             player = 'black';
+
         let description = data.history[i][1];
 
         if(description === '...'){
@@ -1395,7 +1400,7 @@ function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
         let transformation = '';
 
         if(!isLongCastle && !isShotCastle &&!isEnPassant && description.length > 5 && getShotPieceName(piece) === ''){
-            transformation = description[5];
+            transformation = description[description.length - 1];
         }
 
         addHistory(player, {x: xFrom, y: yFrom}, {x: xTo, y: yTo}, piece, isCheck, isShotCastle, isLongCastle,
@@ -1427,6 +1432,14 @@ function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
             if(transformation !== ''){
                 setPiece(player, getLongPieceName(transformation), xTo, yTo);
             }
+        }
+        if(isPat){
+            chessState.winner = 'pat';
+            chessState.finished = true;
+        }
+        else if(isCheckAndMate){
+            chessState.winner = player;
+            chessState.finished = true;
         }
         setTurnToMove(getOpposite(player));
     }
@@ -1490,7 +1503,11 @@ function checkUpdateGame(){
         .then(data => {
             if(data.status === 'success'){
                 if(data.history.length > countHistory){
-                    loadGame().then(() => {});
+
+                    drawBoard(showSteps);
+                    drawPositionsWithHistory(data, false, true);
+
+                    saveHistory(true);
                     showHistory();
                     updateStatusBar();
                     soundClick();
@@ -1498,7 +1515,7 @@ function checkUpdateGame(){
             }
         });
 
-    timerId = setTimeout(checkUpdateGame, 4500);
+    timerId = setTimeout(checkUpdateGame, timeOut);
 }
 
 function showHistoryList(){
@@ -1507,6 +1524,7 @@ function showHistoryList(){
     window.history.replaceState(null, null, url);
 
     clearContainer();
+    stopTimer();
 
     let chessboard = document.querySelector('#chessboard');
     chessboard.innerHTML = '';
@@ -1649,8 +1667,17 @@ function updateStatusBar() {
 }
 
 function updateStatusSave(status){
-    let pSave = document.querySelector('.status-save');
-    pSave.textContent = status;
+
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+    if(getParams.has('debug')){
+        let pSave = document.querySelector('.status-save');
+        pSave.textContent = status;
+    }
+    else{
+        let pSave = document.querySelector('.status-save');
+        pSave.textContent = '';
+    }
 }
 
 function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLongCastling,
