@@ -130,15 +130,11 @@ function setTurnToMove(turn){
 
 function showNewGameOptions(){
 
-    let chessboard = document.querySelector('#chessboard');
-    chessboard.classList.add('chessboard');
-    chessboard.innerHTML = '';
+    clearContainer();
+    stopTimer();
 
-    let leftBoard = document.querySelector('#left-block');
-    leftBoard.innerHTML = '';
-
-    let buttonsDiv = document.querySelector('#downButtons');
-    buttonsDiv.innerHTML = '';
+    const url = document.location.pathname + "?do=newGame";
+    window.history.replaceState(null, null, url);
 
     let divButton = document.createElement('div');
     divButton.classList.add('text-center', 'shadow-lg', 'dropdown-header', 'my-2', 'mx-auto');
@@ -154,6 +150,7 @@ function showNewGameOptions(){
     newButtonThisPC.textContent = "THIS DEVICE";
     newButtonThisPC.classList.add('col-4', 'rounded');
     newButtonThisPC.addEventListener('click', ()=>{
+        chessState.single = true;
         drawBoard(showSteps);
         iniStandard();
     });
@@ -162,8 +159,7 @@ function showNewGameOptions(){
     newButtonRemote.textContent = "REMOTE GAME";
     newButtonRemote.classList.add('col-4', 'rounded');
     newButtonRemote.addEventListener('click', ()=>{
-        drawBoard(showSteps);
-        iniStandard();
+        createRemoteGame();
     });
 
     divButton.append(spanH1);
@@ -171,9 +167,43 @@ function showNewGameOptions(){
     divButton.append(spanLabelThisPC);
     divButton.append(newButtonRemote);
 
+    let chessboard = document.querySelector('#chessboard');
     chessboard.append(divButton);
 
     chessHistory = [];
+}
+
+function createRemoteGame(){
+
+    clearContainer();
+    drawBoard(showSteps);
+    chessState.single = false;
+    iniStandard();
+    chessState.status = 'game';
+    updateStatusBar();
+}
+
+function clearContainer(){
+
+    let chessboard = document.querySelector('#chessboard');
+    chessboard.classList.add('chessboard');
+    chessboard.innerHTML = '';
+
+    let leftBoard = document.querySelector('#left-block');
+    leftBoard.innerHTML = '';
+
+    let buttonsDiv = document.querySelector('#downButtons');
+    buttonsDiv.innerHTML = '';
+
+    let divStatus = document.querySelector('#status-bar');
+    divStatus.innerHTML = '';
+
+}
+
+function stopTimer(){
+    if(timerId !== null)
+        clearTimeout(timerId);
+    timerId = null;
 }
 
 function showSelectPawnMenu(player, x, y, capture) {
@@ -356,7 +386,9 @@ function showSteps(){
         }
     }
 
-    if(cellInfo.player === chessState.turnToMove){
+    let playerFromURL = getPlayerFromURL();
+
+    if(cellInfo.player === chessState.turnToMove && (chessState.single || playerFromURL === chessState.turnToMove)){
 
         chessState.selected = {
             x: x,
@@ -936,12 +968,12 @@ function hideShowHistory(){
 
     let history = document.querySelector('#history');
     if(toHideHistory){
-        this.textContent = 'show';
+        this["textContent"] = 'show';
         history.style.visibility = "hidden";
         showHistory();
     }
     else{
-        this.textContent = 'hide';
+        this["textContent"] = 'hide';
         history.style.visibility = "visible";
         showHistory();
     }
@@ -957,7 +989,7 @@ function createGameHistory(initialLocation){
 
 }
 
-function saveHistory(){
+function saveHistory(itsLoading = false) {
 
     //clear old history:
     let games;
@@ -1004,6 +1036,7 @@ function saveHistory(){
         localStorage.setItem('game_' + gameId, JSON.stringify({
             time: time,
             startTime: startTime,
+            single: chessState.single,
             startPosition: startPositions,
             history: shotHistory
         }));
@@ -1022,7 +1055,42 @@ function saveHistory(){
     let now = new Date();
     localStorage.setItem('games_id', JSON.stringify(games));
 
+    if(!itsLoading)
+        saveHistoryOnServer();
+
     updateStatusSave("Saved local " +now.toString()) ;
+}
+
+function saveHistoryOnServer(){
+
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+
+    fetch('api/api.php?action=saveHistory', {
+        method: 'POST',
+        body: JSON.stringify({
+            gameId: getParams.get('game'),
+            single: chessState.single,
+            startPosition: chessState.initialLocation,
+            moveNumber: chessHistory.length,
+            history: JSON.stringify(chessHistory),
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'error'){
+                updateStatusSave("Error: " + data.error);
+                console.error(data.message);
+            }
+            else{
+                console.log(data);
+                updateStatusSave("Saved online " + new Date().toString());
+            }
+        })
+        .catch((error) => {
+            updateStatusSave("Error save online: " + error);
+            console.error('Error:', error);
+        });
 }
 
 function getOpposite(player){
@@ -1036,6 +1104,12 @@ function getOpposite(player){
 }
 
 function arrange(gameData, moveNumber = undefined){
+
+    clearContainer();
+    stopTimer();
+
+    const url = document.location.pathname + "?do=arrange";
+    window.history.replaceState(null, null, url);
 
     chessState.status = 'arrange';
 
@@ -1116,7 +1190,7 @@ function arrange(gameData, moveNumber = undefined){
     showHistory();
     drawBoard(arrangeBoardSelect);
 
-    if(gameData !== undefined){
+    if(gameData !== undefined && gameData.hasOwnProperty('startPosition')){
         drawPositionsWithHistory(gameData, false, true, moveNumber);
     }
 }
@@ -1194,9 +1268,11 @@ function startGame(player, startPositions, loading = false){
         createGameHistory(startPositions);
 
     saveHistory();
+
+    setTimeout(checkUpdateGame, 5000);
 }
 
-function loadGame(){
+async function loadGame(){
 
     let paramsString = document.location.search;
     let getParams = new URLSearchParams(paramsString);
@@ -1207,24 +1283,53 @@ function loadGame(){
         if(gameId.length !== 16)
             return;
 
+        let isLocalActual = true;
+        let isOnlineActual = false;
+
         let dataJSON = localStorage.getItem('game_' + gameId);
         if(dataJSON === null)
-            return;
+            isLocalActual = false;
 
         try{
-            data = JSON.parse(dataJSON);
+
+            let dataLocal = JSON.parse(dataJSON);
             chessState.positions = getClearPositions();
+            let fetchResponse = await fetch('api/api.php?action=loadHistory&gameId=' + gameId);
+
+            if(!fetchResponse.ok){
+                isOnlineActual = false;
+            }
+            let dataOnline = await fetchResponse.json();
+            if(dataOnline.status === 'error'){
+                isLocalActual = true;
+                isOnlineActual = false;
+            }
+            else {
+                if(dataLocal===null || dataOnline.history.length > dataLocal.history.length){
+                    isLocalActual = false;
+                    isOnlineActual = true;
+                }
+                else {
+                    isOnlineActual = false;
+                    isLocalActual = true;
+                }
+            }
 
             drawBoard(showSteps);
-            drawPositionsWithHistory(data, false, true);
+            if(isLocalActual)
+                drawPositionsWithHistory(dataLocal, false, true);
+            else if(isOnlineActual)
+                drawPositionsWithHistory(dataOnline, false, true);
+
             saveHistory();
+            showHistory();
+            setTimeout(checkUpdateGame, 4500);
         }
         catch (error){
             console.log(error);
         }
     updateStatusBar();
     }
-
 }
 
 function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
@@ -1245,7 +1350,7 @@ function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
         }
         chessState.initialLocation = JSON.stringify(chessState.positions);
     }
-
+    chessState.single = Boolean(data.single);
     chessHistory = [];
     let limit = data.history.length;
     if(moveNumber !== undefined)
@@ -1253,9 +1358,9 @@ function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
 
     let selectMove = document.querySelector('#selectMove');
     if(limit % 2 === 0 && selectMove!==null)
-        selectMove.selectedIndex = 1;
-    else if(selectMove !== null)
         selectMove.selectedIndex = 0;
+    else if(selectMove !== null)
+        selectMove.selectedIndex = 1;
 
     for (let i = 0; i < data.history.length; i++) {
 
@@ -1294,7 +1399,7 @@ function drawPositionsWithHistory(data, itsLoading, itsEdit, moveNumber){
         }
 
         addHistory(player, {x: xFrom, y: yFrom}, {x: xTo, y: yTo}, piece, isCheck, isShotCastle, isLongCastle,
-            isCheckAndMate, isPat, isCapture, isEnPassant, transformation, description)
+            isCheckAndMate, isPat, isCapture, isEnPassant, transformation, description, true)
         if(i<=limit){
             setPiece('', '', xFrom, yFrom);
             setPiece(player, piece, xTo, yTo);
@@ -1370,7 +1475,38 @@ function editGame(){
     }
 }
 
+function checkUpdateGame(){
+
+    let countHistory = chessHistory.length;
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+    let gameId = getParams.get('game');
+
+    if(gameId.length !== 16)
+        return;
+
+    fetch('api/api.php?action=loadHistory&gameId=' + gameId)
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success'){
+                if(data.history.length > countHistory){
+                    loadGame().then(() => {});
+                    showHistory();
+                    updateStatusBar();
+                    soundClick();
+                }
+            }
+        });
+
+    timerId = setTimeout(checkUpdateGame, 4500);
+}
+
 function showHistoryList(){
+
+    const url = document.location.pathname + "?do=showHistoryList";
+    window.history.replaceState(null, null, url);
+
+    clearContainer();
 
     let chessboard = document.querySelector('#chessboard');
     chessboard.innerHTML = '';
@@ -1492,6 +1628,24 @@ function updateStatusBar() {
         let statusBarText = `${chessState.turnToMove}'s move`;
         statusBar.innerHTML = statusBarText[0].toUpperCase() + statusBarText.slice(1);
     }
+
+    if(!chessState.finished && !chessState.single){
+
+        let player = getPlayerFromURL();
+        let gameId = getGameIDFromURL();
+
+        if(player === '' && gameId.length === 16){
+
+            let linkForWhite = location.origin + location.pathname + "?game=" + gameId + "&player=white";
+            let linkForBlack = location.origin + location.pathname + "?game=" + gameId + "&player=black";
+
+            statusBar.innerHTML = "<div id='start-multiplayer' class='form-text'>Game created. Copy link and sent second player. <br>" +
+                "Select your player: <br>" +
+                "Link for white's: <input type='text' value='" + linkForWhite + "' class='input-start-multiplayer'><a href='" + linkForWhite + "' target='_blank'>Play</a><br> " +
+                "Link for black's: <input type='text' value='" + linkForBlack + "' class='input-start-multiplayer'><a href='" + linkForBlack + "' target='_blank'>Play</a><br> " +
+                "</div>";
+        }
+    }
 }
 
 function updateStatusSave(status){
@@ -1500,7 +1654,7 @@ function updateStatusSave(status){
 }
 
 function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLongCastling,
-                    isCheckAndMate, isPat, isCapture, enPassant = false, transformation = '', description='') {
+                    isCheckAndMate, isPat, isCapture, enPassant = false, transformation = '', description='', itsLoading=false){
 
     if(player === 'black' && chessHistory.length === 0){
         addHistory('white', {x:-1, y: -1}, {x:-1, y:-1}, '', false, false)
@@ -1550,7 +1704,26 @@ function addHistory(player, from, to, chessPiece, check, itsShotCastling, itsLon
         enPassant: enPassant
     });
 
-    saveHistory();
+    saveHistory(itsLoading);
+}
+
+function getPlayerFromURL(){
+
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+    if(!getParams.has('player') || (getParams.get('player') !== 'white' && getParams.get('player') !=='black'))
+        return '';
+    else
+        return getParams.get('player');
+}
+
+function getGameIDFromURL(){
+    let paramsString = document.location.search;
+    let getParams = new URLSearchParams(paramsString);
+    if(!getParams.has('game'))
+        return '';
+    else
+        return getParams.get('game').slice(0,16);
 }
 
 function getLastMove(){

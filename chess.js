@@ -22,6 +22,7 @@ const chessState = {
         },
     },
     winner: '',
+    single: true,
     finished: false,
     initialLocation: ''
 }
@@ -29,6 +30,7 @@ const historyLimit = 50;
 
 let chessHistory = [];
 let toHideHistory = false;
+let timerId = null;
 
 const sizeX = 8;
 const sizeY = 8;
@@ -40,4 +42,4 @@ document.querySelector('#button-load').addEventListener('click', showHistoryList
 
 document.querySelector('#button-hide').onclick = hideShowHistory;
 
-loadGame();
+loadGame().then(() => {}) //загрузка игры из БД;
